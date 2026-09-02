@@ -2,30 +2,27 @@
 #define MYLIBRARY_HPP
 
 #include "bigint.hpp"
+#include "naive.hpp"
 
 BigInt modMul(const BigInt&, const BigInt&, const BigInt&);
 
 BigInt gcdMine(BigInt a, BigInt b) {
-    a = a.abs();
-    b = b.abs();
-    while (!b.isZero()) {
-        BigInt t = b;
-        b = modUnsigned(a, b);
-        a = t;
-    }
-    return a;
+    // naive implementation using decimal strings
+    a = a.abs(); b = b.abs();
+    std::string sa = a.toString();
+    std::string sb = b.toString();
+    std::string gr = gcdStr(sa, sb);
+    return BigInt::fromString(gr);
 }
 
 // Naive modular exponentiation: repeated multiplication.
 BigInt modExpNaive(BigInt base, BigInt exp, const BigInt& mod) {
-    BigInt result(1);
-    base = floorMod(base, mod);
-    BigInt i(0), one(1);
-    while (i < exp) {
-        result = modMul(result, base, mod);
-        i = i + one;
-    }
-    return result;
+    // naive decimal-string based repeated multiplication
+    std::string sbase = base.toString();
+    std::string sexp = exp.toString();
+    std::string smod = mod.toString();
+    std::string sout = modExpNaiveStr(sbase, sexp, smod);
+    return BigInt::fromString(sout);
 }
 
 // Square-and-multiply modular exponentiation.
