@@ -31,10 +31,10 @@ import sys
 import time
 
 try:
-    import sympy
-    HAVE_SYMPY = True
+    import gmpy2
+    HAVE_GMPY2 = True
 except ImportError:
-    HAVE_SYMPY = False
+    HAVE_GMPY2 = False
 
 
 # ===========================================================================
@@ -128,12 +128,12 @@ def extended_gcd_naive(a: int, b: int):
 
 def extended_gcd_prebuilt(a: int, b: int):
     """
-    Library implementation via sympy.gcdex(a, b) -> (x, y, g) with
-    a*x + b*y = g.  Requires `pip install sympy`.
+    Library implementation via gmpy2.gcdext(a, b) -> (x, y, g) with
+    a*x + b*y = g.  Requires `pip install gmpy2`.
     """
-    if not HAVE_SYMPY:
-        raise RuntimeError("sympy is not installed -- run: pip install sympy")
-    x, y, g = sympy.gcdex(a, b)
+    if not HAVE_GMPY2:
+        raise RuntimeError("gmpy2 is not installed -- run: pip install gmpy2")
+    g, x, y = gmpy2.gcdext(a, b)
     return int(g), int(x), int(y)
 
 
@@ -303,7 +303,7 @@ def run_correctness_tests(trials: int = 1000) -> None:
         g1, x1, y1 = extended_gcd_naive(a, b)
         assert g1 == gcd_prebuilt(a, b)
         assert a * x1 + b * y1 == g1
-        if HAVE_SYMPY:
+        if HAVE_GMPY2:
             g2, x2, y2 = extended_gcd_prebuilt(a, b)
             assert g2 == g1
             assert a * x2 + b * y2 == g2
@@ -334,8 +334,8 @@ def run_correctness_tests(trials: int = 1000) -> None:
         assert mod_pow_square_and_multiply(base, exp, m) == expected
         assert mod_pow_prebuilt(base, exp, m) == expected
 
-    sympy_note = "" if HAVE_SYMPY else "  (sympy not installed -> extended-gcd 'prebuilt' checks skipped)"
-    print(f"All {trials} random trials passed for every naive/prebuilt pair.{sympy_note} \u2714\n")
+    gmpy2_note = "" if HAVE_GMPY2 else "  (gmpy2 not installed -> extended-gcd 'prebuilt' checks skipped)"
+    print(f"All {trials} random trials passed for every naive/prebuilt pair.{gmpy2_note} \u2714\n")
 
 
 # ===========================================================================
@@ -391,7 +391,7 @@ def run_timing_experiment() -> None:
     mod = (1 << 521) - 1
     base = secrets.randbelow(mod)
 
-    exponents = [2 ** k for k in range(4, 19)]
+    exponents = [2 ** k for k in range(4, 15)]
     print(f"{'exponent':>12} | {'naive (s)':>14} | {'prebuilt pow() (s)':>20} | speedup")
     print("-" * 78)
 
@@ -416,8 +416,6 @@ def run_timing_experiment() -> None:
     print()
     print("naive: exp-1 modular multiplications                 -> O(exp)")
     print("pow() (built-in, C-implemented square-and-multiply)  -> O(log exp)")
-    print("(our own hand-written square-and-multiply, mod_pow_square_and_multiply,")
-    print(" matches pow()'s O(log exp) behaviour -- try it in the calculator, option 6)")
     print()
 
 
@@ -436,7 +434,6 @@ and shown separately.
   4. Modular addition               (a + b) mod m
   5. Modular multiplication         (a * b) mod m
   6. Modular exponentiation         (a^b) mod m
-  7. Generate a random >= 512-bit number (for testing big inputs)
   0. Exit
 =========================================================================
 """
@@ -501,12 +498,6 @@ def calculator() -> None:
             dt = time.perf_counter() - t0
             print(f"  [square-and-multiply  ] result = {r}")
             print(f"  [square-and-multiply  ] time   = {dt:.8f} s")
-
-        elif choice == "7":
-            bits = read_int("  how many bits (>=512 recommended) = ")
-            n = secrets.randbits(bits)
-            print(f"  random {bits}-bit number:\n  {n}")
-            print(f"  (decimal digits: {len(str(n))}, hex: 0x{n:x})\n")
 
         else:
             print("  ! Invalid option.\n")
