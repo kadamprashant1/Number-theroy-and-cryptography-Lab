@@ -89,6 +89,12 @@ void taskGCD()
     auto t0 = chrono::high_resolution_clock::now();
     boost_mimic::uint512_t g = boost_mimic::gcd(a, b);
     auto t1 = chrono::high_resolution_clock::now();
+    //for naive convert to string and use gcdMine
+    string a_str = a.to_string();
+    string b_str = b.to_string();
+    auto t01 = chrono::high_resolution_clock::now();
+    //utilize this BigInt gcdMine(BigInt a, BigInt b)
+    string g_str = gcdMine(a_str, b_str);
     cout << "\n";
     cout << "  gcd(a,b) = " << g << "\n";
     infoLine("Computed in " + to_string(chrono::duration_cast<chrono::microseconds>(t1 - t0).count()) + " us");
