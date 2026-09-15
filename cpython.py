@@ -185,7 +185,7 @@ def mod_mul_prebuilt(a: int, b: int, m: int) -> int:
 # ===========================================================================
 # 6. Modular exponentiation
 # ===========================================================================
-NAIVE_EXP_LIMIT = 300_000  # safety cap: naive is O(exp) -- don't hang the demo/calculator
+NAIVE_EXP_LIMIT = None  # no safety cap: allow the naive implementation to run freely
 
 
 def mod_pow_naive(base: int, exp: int, mod: int) -> int:
@@ -197,7 +197,7 @@ def mod_pow_naive(base: int, exp: int, mod: int) -> int:
     """
     if exp < 0:
         raise ValueError("only non-negative exponents supported")
-    if exp > NAIVE_EXP_LIMIT:
+    if NAIVE_EXP_LIMIT is not None and exp > NAIVE_EXP_LIMIT:
         raise OverflowError(
             f"exponent {exp} exceeds the naive-method safety cap "
             f"({NAIVE_EXP_LIMIT}); it would take too long with O(exp) "
@@ -396,7 +396,7 @@ def run_timing_experiment() -> None:
     print("-" * 78)
 
     for exp in exponents:
-        if exp <= NAIVE_EXP_LIMIT:
+        if NAIVE_EXP_LIMIT is None or exp <= NAIVE_EXP_LIMIT:
             t0 = time.perf_counter()
             r_naive = mod_pow_naive(base, exp, mod)
             t_naive = time.perf_counter() - t0

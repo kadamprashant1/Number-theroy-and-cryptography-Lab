@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Source-grounded algorithm documentation for the Number Theory and Cryptography Lab calculator.">
+  <title>Number Theory Calculator | Algorithm Documentation</title>
+  <style>
+    :root {
+      --ink: #17242c;
+      --muted: #5b6b72;
+      --paper: #fbfaf6;
+      --surface: #ffffff;
+      --line: #d9e2df;
+      --teal: #087f73;
+      --teal-dark: #075b55;
+      --teal-pale: #e2f3ef;
+      --gold: #c47b22;
+      --gold-pale: #fff1da;
+      --coral: #a8483d;
+      --coral-pale: #fbe8e4;
+      --navy: #173c55;
+      --shadow: 0 14px 35px rgba(22, 53, 57, .08);
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font: 16px/1.65 Georgia, "Times New Roman", serif;
+    }
+    h1, h2, h3, h4, nav, .eyebrow, .tag, table, .button, .meta, .callout {
+      font-family: "Trebuchet MS", Verdana, sans-serif;
+    }
+    h1, h2, h3, h4 { line-height: 1.18; margin: 0 0 .65rem; letter-spacing: 0; }
+    h2 { font-size: clamp(1.55rem, 3vw, 2.25rem); }
+    h3 { font-size: 1.18rem; color: var(--teal-dark); }
+    h4 { font-size: .95rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+    p { margin: .45rem 0 1rem; }
+    a { color: var(--teal-dark); }
+    code, pre { font-family: Consolas, "Courier New", monospace; }
+    code { color: #8e3b2e; font-size: .92em; }
+    .topbar {
+      background: var(--navy);
+      color: #f7fcfb;
+      border-bottom: 4px solid var(--gold);
+    }
+    .topbar-inner, .wrap { width: min(1180px, calc(100% - 2rem)); margin: auto; }
+    .topbar-inner { padding: 3.5rem 0 3rem; }
+    .eyebrow { color: #bde9df; text-transform: uppercase; font-size: .75rem; font-weight: 700; letter-spacing: .14em; }
+    .topbar h1 { max-width: 820px; font-size: clamp(2.25rem, 6vw, 4.7rem); margin: .65rem 0 1rem; }
+    .lede { max-width: 720px; color: #d7e7e5; font-size: 1.13rem; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.5rem; }
+    .tag { display: inline-block; border: 1px solid rgba(255,255,255,.3); border-radius: 999px; padding: .25rem .7rem; color: #eaf8f5; font-size: .78rem; }
+    .layout { display: grid; grid-template-columns: 235px 1fr; gap: 2rem; align-items: start; padding-top: 2rem; }
+    .toc { position: sticky; top: 1rem; padding: 1rem; border-left: 3px solid var(--gold); background: #f3f0e8; }
+    .toc strong { display: block; margin-bottom: .6rem; font-family: "Trebuchet MS", Verdana, sans-serif; }
+    .toc a { display: block; padding: .25rem 0; text-decoration: none; font-size: .88rem; }
+    .toc a:hover { color: var(--coral); }
+    main { min-width: 0; }
+    section { scroll-margin-top: 1rem; margin-bottom: 2rem; }
+    .section-head { display: flex; gap: 1rem; align-items: baseline; border-bottom: 2px solid var(--ink); padding-bottom: .7rem; margin-bottom: 1rem; }
+    .section-number { color: var(--gold); font: 700 1.05rem "Trebuchet MS", Verdana, sans-serif; }
+    .card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+    .card, .algorithm { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.25rem; }
+    .algorithm { border-top: 5px solid var(--teal); margin: 1rem 0; }
+    .algorithm.manual { border-top-color: var(--gold); }
+    .algorithm.builtin { border-top-color: var(--navy); }
+    .algorithm h3 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; }
+    .label { color: var(--muted); font-size: .73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+    .callout { border-left: 5px solid var(--teal); background: var(--teal-pale); padding: 1rem 1.1rem; margin: 1rem 0; }
+    .callout.warning { border-left-color: var(--coral); background: var(--coral-pale); }
+    .callout.note { border-left-color: var(--gold); background: var(--gold-pale); }
+    .callout strong { display: block; margin-bottom: .2rem; }
+    .steps { counter-reset: step; list-style: none; padding: 0; margin: 1rem 0; }
+    .steps li { counter-increment: step; display: grid; grid-template-columns: 2rem 1fr; gap: .7rem; margin: .7rem 0; }
+    .steps li::before { content: counter(step); display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--teal); color: white; font: 700 .8rem "Trebuchet MS", Verdana, sans-serif; }
+    .complexity { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; margin: 1rem 0; }
+    .metric { background: #f3f7f5; border: 1px solid var(--line); padding: .65rem; border-radius: 8px; }
+    .metric b { display: block; font: 700 .8rem "Trebuchet MS", Verdana, sans-serif; color: var(--muted); text-transform: uppercase; }
+    .metric span { color: var(--teal-dark); font: 700 1.05rem Consolas, monospace; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: white; }
+    table { width: 100%; min-width: 780px; border-collapse: collapse; font-size: .87rem; line-height: 1.45; }
+    th { color: white; background: var(--navy); text-align: left; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }
+    th, td { padding: .75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    tr:last-child td { border-bottom: 0; }
+    tr:nth-child(even) td { background: #f7faf8; }
+    pre { overflow-x: auto; margin: .8rem 0 0; padding: 1rem; border-radius: 8px; background: #17242c; color: #e8f5f1; font-size: .82rem; line-height: 1.55; tab-size: 4; }
+    .kw { color: #f2bb70; } .fn { color: #8dd7ca; } .str { color: #d9a9e8; } .cm { color: #8da4a8; } .num { color: #f3d27d; }
+    .mapping { display: grid; grid-template-columns: 190px 1fr; gap: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: white; }
+    .mapping > div { padding: .75rem; border-bottom: 1px solid var(--line); }
+    .mapping > div:nth-last-child(-n+2) { border-bottom: 0; }
+    .mapping > div:nth-child(4n+1), .mapping > div:nth-child(4n+2) { background: #f7faf8; }
+    .mapping .key { font: 700 .85rem "Trebuchet MS", Verdana, sans-serif; color: var(--teal-dark); }
+    footer { margin-top: 3rem; padding: 2rem 0 3rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+    @media (max-width: 820px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .2rem 1rem; }
+      .toc strong { grid-column: 1 / -1; }
+      .card-grid { grid-template-columns: 1fr; }
+      .complexity { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 520px) {
+      .topbar-inner, .wrap { width: min(100% - 1.1rem, 1180px); }
+      .topbar-inner { padding: 2.4rem 0 2rem; }
+      .toc { grid-template-columns: 1fr; }
+      .mapping { grid-template-columns: 1fr; }
+      .mapping > div { border-bottom: 0; }
+      .mapping .key { padding-bottom: .1rem; }
+      .mapping > div:nth-child(4n+2), .mapping > div:nth-child(4n+4) { padding-top: 0; }
+      .complexity { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="eyebrow">Source-grounded technical documentation</div>
+      <h1>Number Theory &amp; Cryptography Lab</h1>
+      <p class="lede">An algorithm and complexity guide to the Python modular-arithmetic engine and its Streamlit calculator interface.</p>
+      <div class="meta-row">
+        <span class="tag">cpython.py</span>
+        <span class="tag">calculatorUi.py</span>
+        <span class="tag">manual vs prebuilt</span>
+        <span class="tag">single-file reference</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap layout">
+    <aside class="toc" aria-label="Documentation navigation">
+      <strong>On this page</strong>
+      <a href="#overview">1. Overview</a>
+      <a href="#algorithms">2. Algorithms</a>
+      <a href="#complexity">3. Complexity</a>
+      <a href="#alternatives">4. Alternatives</a>
+      <a href="#benefits">5. Benefits</a>
+      <a href="#prebuilt">6. Prebuilt APIs</a>
+      <a href="#comparison">7. Comparison</a>
+      <a href="#mapping">8. Code mapping</a>
+      <a href="#conclusion">9. Overall analysis</a>
+    </aside>
+
+    <main>
+      <section id="overview">
+        <div class="section-head"><span class="section-number">01</span><h2>Calculator Overview</h2></div>
+        <div class="card-grid">
+          <article class="card">
+            <h3>What it does</h3>
+            <p>The project is a modular-arithmetic teaching calculator. It exposes GCD, extended GCD, modular inverse, modular addition, modular multiplication, and modular exponentiation.</p>
+            <p>For each operation, the Streamlit UI runs a manual implementation and a prebuilt implementation separately, measures each call with <code>time.perf_counter()</code>, and presents the result or error in two columns. Modular exponentiation additionally displays the hand-written square-and-multiply result.</p>
+          </article>
+          <article class="card">
+            <h3>Input and output flow</h3>
+            <ol class="steps">
+              <li><span>The user selects an operation from the sidebar.</span></li>
+              <li><span>The form renders only the fields needed for that operation.</span></li>
+              <li><span><code>parse_int()</code> trims input and accepts decimal or <code>0x</code>-prefixed hexadecimal.</span></li>
+              <li><span>The selected renderer calls both approaches through <code>safe_call()</code>.</span></li>
+              <li><span>Results, errors, and elapsed seconds are rendered side by side.</span></li>
+            </ol>
+          </article>
+        </div>
+        <div class="callout note">
+          <strong>Important scope distinction</strong>
+          The source contains two front ends: the Streamlit interface in <code>calculatorUi.py</code> and a command-line calculator/demo path in <code>cpython.py</code>. The algorithms are shared, but their presentation and error-handling flows differ.
+        </div>
+      </section>
+
+      <section id="algorithms">
+        <div class="section-head"><span class="section-number">02</span><h2>Algorithms Used</h2></div>
+        <p>The following descriptions separate algorithms explicitly written in the source from library calls whose internals are not defined by this project.</p>
+
+        <article class="algorithm manual">
+          <h3>Binary long division by shift and subtract <span class="label">manual_mod(x, m)</span></h3>
+          <p><strong>Purpose:</strong> Compute a remainder without using Python’s <code>%</code>, <code>//</code>, or <code>divmod()</code> for the remainder itself. It is the reduction primitive used by the manual modular operations.</p>
+          <p><strong>How it is used:</strong> <code>gcd_naive()</code>, <code>mod_add_naive()</code>, <code>mod_mul_naive()</code>, <code>mod_pow_naive()</code>, <code>mod_pow_square_and_multiply()</code>, and <code>mod_inverse_naive()</code> all depend on it directly or indirectly.</p>
+          <ol class="steps">
+            <li><span>Reject a zero modulus, then work with absolute values.</span></li>
+            <li><span>Align the modulus with the highest bit of the absolute dividend using a left shift.</span></li>
+            <li><span>Scan shifts from high to low. If the aligned divisor fits, subtract it.</span></li>
+            <li><span>Convert a negative input back to Python’s non-negative remainder convention for a positive modulus.</span></li>
+          </ol>
+          <p><strong>Example:</strong> For <code>29 mod 6</code>, align <code>6 &lt;&lt; 2 = 24</code>, subtract to get <code>5</code>, then lower shifts no longer fit. The result is <code>5</code>.</p>
+          <p><strong>Data structures:</strong> Only integer scalars are used: the remainder, shifted divisor, shift counter, and sign flags. There is no array, table, graph, or heap.</p>
+          <div class="complexity">
+            <div class="metric"><b>Best time</b><span>O(1)</span></div>
+            <div class="metric"><b>Average time</b><span>O(L)</span></div>
+            <div class="metric"><b>Worst time</b><span>O(L)</span></div>
+            <div class="metric"><b>Space</b><span>O(1)</span></div>
+          </div>
+          <p>Here <code>L</code> is the relevant bit length. The best case occurs when the absolute dividend is smaller than the modulus, so no scan is needed. The loop has one pass per bit alignment in the general case. These are arithmetic-step bounds; actual Python big-integer operations also have costs dependent on operand size.</p>
+        </article>
+
+        <article class="algorithm manual">
+          <h3>Binary shift-and-add multiplication <span class="label">naive_multiply(a, b)</span></h3>
+          <p><strong>Purpose:</strong> Multiply integers without using Python’s <code>*</code> for the main product.</p>
+          <ol class="steps">
+            <li><span>Record whether exactly one operand is negative and then use absolute values.</span></li>
+            <li><span>Inspect the lowest bit of the multiplier. If it is one, add the current multiplicand to the result.</span></li>
+            <li><span>Double the multiplicand with a left shift and halve the multiplier with a right shift.</span></li>
+            <li><span>Repeat until the multiplier is zero, then restore the sign.</span></li>
+          </ol>
+          <p><strong>Example:</strong> <code>13 × 6</code> examines multiplier bits <code>0, 1, 1</code>. It adds shifted multiplicands <code>0 + 26 + 52 = 78</code>.</p>
+          <p><strong>Data structures:</strong> Integer scalars only. The binary representation is accessed through bit operations rather than stored in a list.</p>
+          <div class="complexity">
+            <div class="metric"><b>Best time</b><span>O(1)</span></div>
+            <div class="metric"><b>Average time</b><span>O(B)</span></div>
+            <div class="metric"><b>Worst time</b><span>O(B)</span></div>
+            <div class="metric"><b>Space</b><span>O(1)</span></div>
+          </div>
+          <p><code>B</code> is the bit length of the multiplier. A zero or one-bit multiplier ends immediately; otherwise there is one loop iteration per multiplier bit. The integer values grow during shifts, so bit-level memory is proportional to operand/result size even though the number of named variables is constant.</p>
+        </article>
+
+        <article class="algorithm manual">
+          <h3>Euclidean algorithm for GCD <span class="label">gcd_naive(a, b)</span></h3>
+          <p><strong>Purpose:</strong> Find the greatest common divisor of two integers.</p>
+          <ol class="steps">
+            <li><span>Replace both inputs with their absolute values.</span></li>
+            <li><span>While the second value is nonzero, replace the pair <code>(a, b)</code> with <code>(b, a mod b)</code>.</span></li>
+            <li><span>Return the final nonzero value.</span></li>
+          </ol>
+          <p><strong>Example:</strong> <code>gcd(48, 18)</code> becomes <code>(18, 12)</code>, <code>(12, 6)</code>, then <code>(6, 0)</code>; the answer is <code>6</code>.</p>
+          <p>The remainder is supplied by the project’s shift-and-subtract <code>manual_mod()</code>, so this is not a call to Python’s built-in modulo in the manual path.</p>
+          <div class="complexity">
+            <div class="metric"><b>Best time</b><span>O(1)</span></div>
+            <div class="metric"><b>Average time</b><span>O(log N)</span></div>
+            <div class="metric"><b>Worst time</b><span>O(log N)</span></div>
+            <div class="metric"><b>Space</b><span>O(1)</span></div>
+          </div>
+          <p><code>N = min(|a|, |b|)</code> at the algorithmic level. The best case is when the second input is zero or the first remainder is zero. Euclidean remainders shrink quickly, with a logarithmic worst-case number of iterations. Each iteration also pays for <code>manual_mod()</code>; a full bit-complexity analysis must account for the size of those integer operations.</p>
+        </article>
+
+        <article class="algorithm manual">
+          <h3>Iterative extended Euclidean algorithm <span class="label">extended_gcd_naive(a, b)</span></h3>
+          <p><strong>Purpose:</strong> Return <code>(g, x, y)</code> such that <code>a*x + b*y = g</code>, where <code>g = gcd(a, b)</code>. The coefficients are needed for modular inverses.</p>
+          <ol class="steps">
+            <li><span>Separate signs and run the recurrence on absolute values.</span></li>
+            <li><span>Maintain remainder pairs <code>(old_r, r)</code> and coefficient pairs <code>(old_s, s)</code>, <code>(old_t, t)</code>.</span></li>
+            <li><span>Compute the quotient <code>q = old_r // r</code>.</span></li>
+            <li><span>Update each pair using the same recurrence: new value = old value minus <code>q</code> times current value.</span></li>
+            <li><span>When <code>r</code> reaches zero, restore input signs and return the final gcd and coefficients.</span></li>
+          </ol>
+          <p><strong>Example:</strong> For <code>35</code> and <code>15</code>, one valid result is <code>(5, 1, -2)</code>, because <code>35(1) + 15(-2) = 5</code>.</p>
+          <p><strong>Data structures:</strong> Six integer state variables, not a table of all divisions. The implementation is iterative, so it does not consume recursion-stack space.</p>
+          <div class="complexity">
+            <div class="metric"><b>Best time</b><span>O(1)</span></div>
+            <div class="metric"><b>Average time</b><span>O(log N)</span></div>
+            <div class="metric"><b>Worst time</b><span>O(log N)</span></div>
+            <div class="metric"><b>Space</b><span>O(1)</span></div>
+          </div>
+          <p>The iteration count follows Euclid’s algorithm. Coefficients may become large, so the storage occupied by the integer objects grows with input size; <code>O(1)</code> describes the number of scalar state slots, not a constant number of machine words.</p>
+        </article>
+
+        <article class="algorithm manual">
+          <h3>Modular inverse via extended GCD <span class="label">mod_inverse_naive(a, m)</span></h3>
+          <p><strong>Purpose:</strong> Find <code>x</code> with <code>a*x ≡ 1 (mod m)</code>.</p>
+          <ol class="steps">
+            <li><span>Require a positive modulus.</span></li>
+            <li><span>Reduce <code>a</code> with <code>manual_mod()</code>.</span></li>
+            <li><span>Run <code>extended_gcd_naive(a_mod, m)</code>.</span></li>
+            <li><span>Accept the coefficient only when the gcd is one; otherwise report that no inverse exists.</span></li>
+            <li><span>Reduce the coefficient into the range determined by the modulus.</span></li>
+          </ol>
+          <p><strong>Example:</strong> The inverse of <code>3 mod 7</code> is <code>5</code>, because <code>3 × 5 = 15 ≡ 1 mod 7</code>.</p>
+          <div class="complexity">
+            <div class="metric"><b>Best time</b><span>O(1)</span></div>
+            <div class="metric"><b>Average time</b><span>O(log m)</span></div>
+            <div class="metric"><b>Worst time</b><span>O(log m)</span></div>
+            <div class="metric"><b>Space</b><span>O(1)</span></div>
+          </div>
+          <p>The dominant work is extended GCD; the final reductions add another linear-in-bit-length manual remainder scan. An inverse exists exactly when <code>gcd(a, m) = 1</code>.</p>
+        </article>
+
+        <article class="algorithm manual">
+          <h3>Modular addition and modular multiplication <span class="label">mod_add_naive() / mod_mul_naive()</span></h3>
+          <p><strong>Addition:</strong> Compute <code>a + b</code>, then reduce with <code>manual_mod()</code>. At the loop level this is one addition plus one remainder operation.</p>
+          <p><strong>Multiplication:</strong> Compute the product with <code>naive_multiply()</code>, then reduce it with <code>manual_mod()</code>. This deliberately exposes the lower-level binary multiplication technique.</p>
+          <div class="complexity">
+            <div class="metric"><b>Add best</b><span>O(1)</span></div>
+            <div class="metric"><b>Add worst</b><span>O(L)</span></div>
+            <div class="metric"><b>Multiply best</b><span>O(1)</span></div>
+            <div class="metric"><b>Multiply worst</b><span>O(B + L)</span></div>
+          </div>
+          <p>At the source-level arithmetic-step model, addition is dominated by the manual remainder scan over bit length <code>L</code>; multiplication is dominated by <code>B</code> shift-and-add steps plus the reduction. Both use only integer scalars.</p>
+        </article>
+
+        <article class="algorithm manual">
+          <h3>Repeated modular multiplication <span class="label">mod_pow_naive(base, exp, mod)</span></h3>
+          <p><strong>Purpose:</strong> Compute <code>base^exp mod mod</code> in the most direct way shown in the project.</p>
+          <ol class="steps">
+            <li><span>Reject negative exponents.</span></li>
+            <li><span>Initialize <code>result = 1 mod mod</code> and reduce the base.</span></li>
+            <li><span>Repeat exactly <code>exp</code> times: multiply the running result by the reduced base and reduce again.</span></li>
+            <li><span>Return the final remainder.</span></li>
+          </ol>
+          <p><strong>Example:</strong> <code>2^5 mod 7</code> performs five modular multiplications and returns <code>4</code>.</p>
+          <div class="complexity">
+            <div class="metric"><b>Best time</b><span>O(1)</span></div>
+            <div class="metric"><b>Average time</b><span>O(E)</span></div>
+            <div class="metric"><b>Worst time</b><span>O(E)</span></div>
+            <div class="metric"><b>Space</b><span>O(1)</span></div>
+          </div>
+          <p><code>E</code> is the exponent. The actual cost is approximately <code>E</code> calls to the manual multiply-and-reduce path, so bit length makes each iteration more expensive. In the provided source, <code>NAIVE_EXP_LIMIT = None</code>, meaning no safety cap is active in the Streamlit path.</p>
+        </article>
+
+        <article class="algorithm manual">
+          <h3>Square-and-multiply exponentiation <span class="label">mod_pow_square_and_multiply()</span></h3>
+          <p><strong>Purpose:</strong> Compute modular powers in logarithmic exponent steps without using built-in <code>pow()</code>. The UI labels it a bonus and the source calls it “not naive, not library.”</p>
+          <ol class="steps">
+            <li><span>Initialize result to <code>1 mod mod</code>, reduce the base, and copy the exponent to <code>e</code>.</span></li>
+            <li><span>If the least-significant bit of <code>e</code> is one, multiply the result by the current base.</span></li>
+            <li><span>Square the current base modulo <code>mod</code>.</span></li>
+            <li><span>Shift <code>e</code> right by one bit and continue until it is zero.</span></li>
+          </ol>
+          <p><strong>Example:</strong> The binary representation of <code>13</code> is <code>1101</code>, so the algorithm processes four bits rather than performing thirteen multiplications.</p>
+          <div class="complexity">
+            <div class="metric"><b>Best time</b><span>O(1)</span></div>
+            <div class="metric"><b>Average time</b><span>O(log E)</span></div>
+            <div class="metric"><b>Worst time</b><span>O(log E)</span></div>
+            <div class="metric"><b>Space</b><span>O(1)</span></div>
+          </div>
+          <p>There is one loop per exponent bit. Each bit may cause one multiply and every iteration causes one square, with manual multiplication and remainder underneath.</p>
+        </article>
+
+        <article class="algorithm builtin">
+          <h3>Comparison and validation techniques <span class="label">run_both() / run_correctness_tests()</span></h3>
+          <p><strong>Separate timing:</strong> <code>run_both()</code> calls the manual function, catches its exception, times it, then calls the prebuilt function and times it independently. It compares values only when both calls succeed.</p>
+          <p><strong>Randomized validation:</strong> <code>run_correctness_tests()</code> generates random inputs with <code>random.randint()</code>, checks GCD and Bézout identities, verifies modular inverses, and compares modular arithmetic against Python’s result. Exponentiation receives 200 smaller random tests.</p>
+          <p><strong>Data structures:</strong> Tuples carry argument groups and extended-GCD results; local scalar variables carry timings and errors. The test suite does not build a persistent dataset.</p>
+          <div class="complexity">
+            <div class="metric"><b>One comparison</b><span>O(T)</span></div>
+            <div class="metric"><b>Test suite</b><span>O(K · T)</span></div>
+            <div class="metric"><b>Extra space</b><span>O(1)</span></div>
+            <div class="metric"><b>Timing cost</b><span>2 calls</span></div>
+          </div>
+          <p><code>T</code> is the cost of the selected operation and <code>K</code> is the number of trials. The test suite is a development/demo feature, not part of the Streamlit request path.</p>
+        </article>
+      </section>
+
+      <section id="complexity">
+        <div class="section-head"><span class="section-number">03</span><h2>Time Complexity</h2></div>
+        <p>The compact table uses the source-level algorithm model. For Python integers, arithmetic is not truly constant-time: the cost depends on the number of bits. Therefore, <code>N</code>, <code>L</code>, <code>B</code>, and <code>E</code> are defined in the table rather than hiding that dependency.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Implemented operation</th><th>Best</th><th>Average</th><th>Worst</th><th>Space</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td><code>manual_mod</code></td><td>O(1)</td><td>O(L)</td><td>O(L)</td><td>O(1)</td><td>One descending shift per relevant bit alignment; immediate return when dividend is smaller.</td></tr>
+              <tr><td><code>naive_multiply</code></td><td>O(1)</td><td>O(B)</td><td>O(B)</td><td>O(1)</td><td>One iteration per multiplier bit; zero ends immediately.</td></tr>
+              <tr><td><code>gcd_naive</code></td><td>O(1)</td><td>O(log N)</td><td>O(log N)</td><td>O(1)</td><td>Euclidean remainders shrink rapidly; each step calls manual remainder.</td></tr>
+              <tr><td><code>extended_gcd_naive</code></td><td>O(1)</td><td>O(log N)</td><td>O(log N)</td><td>O(1) scalar slots</td><td>Same quotient/remainder progression as GCD, with coefficient updates.</td></tr>
+              <tr><td><code>mod_inverse_naive</code></td><td>O(1)</td><td>O(log m)</td><td>O(log m)</td><td>O(1) scalar slots</td><td>Extended GCD dominates; it fails cleanly when the gcd is not one.</td></tr>
+              <tr><td><code>mod_add_naive</code></td><td>O(1)</td><td>O(L)</td><td>O(L)</td><td>O(1)</td><td>One addition followed by manual reduction.</td></tr>
+              <tr><td><code>mod_mul_naive</code></td><td>O(1)</td><td>O(B + L)</td><td>O(B + L)</td><td>O(1) scalar slots</td><td>Shift-and-add multiplication followed by manual reduction.</td></tr>
+              <tr><td><code>mod_pow_naive</code></td><td>O(1)</td><td>O(E)</td><td>O(E)</td><td>O(1) scalar slots</td><td>Exactly E modular multiplications; each has its own big-integer cost.</td></tr>
+              <tr><td><code>mod_pow_square_and_multiply</code></td><td>O(1)</td><td>O(log E)</td><td>O(log E)</td><td>O(1) scalar slots</td><td>Processes exponent bits, squaring every iteration and multiplying for one bits.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout note">
+          <strong>Effective size in this calculator</strong>
+          For a fixed classroom input such as a few decimal digits, all operations may feel constant-time in practice. The general bounds still matter because this project explicitly demonstrates 512-bit numbers and compares exponent growth in its demo functions.
+        </div>
+      </section>
+
+      <section id="alternatives">
+        <div class="section-head"><span class="section-number">04</span><h2>Alternative Algorithms</h2></div>
+        <div class="card-grid">
+          <article class="card"><h3>Remainder and GCD</h3><p><strong>Alternative:</strong> A binary GCD (Stein’s algorithm) replaces division/remainder with shifts, subtraction, and removal of powers of two. It is often useful when division is expensive.</p><p><strong>Comparison:</strong> The current Euclidean algorithm is shorter and conventional. Binary GCD has O(log N) arithmetic iterations and O(1) auxiliary space, but can require more subtraction steps and is not automatically faster for Python big integers.</p><p><strong>Prefer it when:</strong> the environment makes division especially costly or a bit-oriented implementation is the teaching objective.</p></article>
+          <article class="card"><h3>Extended GCD and inverse</h3><p><strong>Alternative:</strong> Lehmer’s extended GCD uses leading digit/word approximations to reduce the number of full big-integer divisions. For a prime modulus, Fermat’s theorem can compute an inverse as <code>a^(m-2) mod m</code>, provided <code>a</code> is nonzero modulo the prime.</p><p><strong>Comparison:</strong> Extended GCD works for every positive modulus when the gcd is one; Fermat’s route is restricted to prime moduli and adds exponentiation work. Lehmer’s method can improve large-integer performance but is more complex.</p><p><strong>Prefer it when:</strong> inputs are very large and prime-modulus assumptions or a mature big-integer library are acceptable.</p></article>
+          <article class="card"><h3>Multiplication and modular reduction</h3><p><strong>Alternatives:</strong> Python’s built-in multiplication, Karatsuba/Toom-Cook multiplication, and Montgomery or Barrett reduction.</p><p><strong>Comparison:</strong> The current code intentionally exposes shift-and-add. Built-in big integers use optimized internals; Montgomery reduction is especially useful when many multiplications share an odd modulus, while Barrett reduction avoids repeated division using a precomputed reciprocal.</p><p><strong>Complexity:</strong> Karatsuba is commonly described as O(L<sup>log<sub>2</sub>3</sup>) for L-bit operands; exact built-in and library behavior is implementation-dependent. Montgomery and Barrett have costs tied to big-integer multiplication and are most valuable in repeated modular workloads.</p></article>
+          <article class="card"><h3>Exponentiation</h3><p><strong>Alternative:</strong> The project already includes square-and-multiply. Other alternatives include a left-to-right or right-to-left binary variant, sliding-window exponentiation, and a library modular-power routine.</p><p><strong>Comparison:</strong> Repeated multiplication is O(E) modular products; binary exponentiation is O(log E); sliding windows reduce multiplications further by precomputing small odd powers, at the cost of O(2<sup>w</sup>) or similar window-dependent storage.</p><p><strong>Prefer it when:</strong> exponents are large. The current square-and-multiply is the best fit here because it improves asymptotic behavior without adding a table or external dependency.</p></article>
+        </div>
+        <div class="callout warning"><strong>No invented alternative for opaque internals</strong> The source does not expose the internal algorithm of <code>math.gcd()</code>, <code>gmpy2.gcdext()</code>, Python’s <code>pow()</code>, or the integer multiplication and modulo operators. Their alternatives above are conceptual choices, not claims about what those APIs currently do internally.</div>
+      </section>
+
+      <section id="benefits">
+        <div class="section-head"><span class="section-number">05</span><h2>Benefits of the Current Algorithms</h2></div>
+        <div class="card-grid">
+          <article class="card"><h3>Teaching clarity</h3><p>The code makes the mechanics visible. Bit shifts, remainder reduction, quotient updates, and exponent-bit inspection can be traced directly, then compared with a production-oriented implementation.</p></article>
+          <article class="card"><h3>Small memory footprint</h3><p>The manual paths use scalar state and loops rather than storing a history of steps. Their auxiliary space is constant in the number of variables, which is appropriate for an interactive calculator.</p></article>
+          <article class="card"><h3>Useful performance contrast</h3><p>Running both routes with independent timers turns the calculator into a small experiment. The O(E) naive exponentiation makes the advantage of logarithmic exponentiation easy to observe.</p></article>
+          <article class="card"><h3>Maintainable separation</h3><p>Each operation has a named manual function, a prebuilt counterpart, and a UI renderer. That separation makes correctness comparisons and future substitutions straightforward.</p></article>
+          <article class="card"><h3>Scalable enough for the lab</h3><p>The core routines accept Python arbitrary-precision integers and the demo intentionally includes 512-bit values. They are suitable for moderate educational inputs, though the naive power path is not a production cryptography primitive.</p></article>
+          <article class="card"><h3>Appropriate, not universally superior</h3><p>The manual algorithms are appropriate because the project’s goal includes learning and comparison. For high-throughput or security-sensitive work, optimized, audited libraries are preferable to these instructional implementations.</p></article>
+        </div>
+      </section>
+
+      <section id="prebuilt">
+        <div class="section-head"><span class="section-number">06</span><h2>Prebuilt, Built-in, and Framework APIs</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>API / library</th><th>Role in source</th><th>Known or documented concept</th><th>Complexity / limitation</th><th>What manual code would replace it</th></tr></thead>
+            <tbody>
+              <tr><td><code>math.gcd(a, b)</code></td><td><code>gcd_prebuilt()</code></td><td>Standard-library GCD operation.</td><td>Exact implementation details are not defined by this project; typically logarithmic in input magnitude at the algorithmic level. Treat internal constants and bit complexity as implementation-dependent.</td><td><code>gcd_naive()</code> plus <code>manual_mod()</code>.</td></tr>
+              <tr><td><code>gmpy2.gcdext()</code></td><td><code>extended_gcd_prebuilt()</code></td><td>External GMP-based arbitrary-precision extended GCD; returns values rearranged by the wrapper into <code>(g, x, y)</code>.</td><td>Internal GMP algorithm/version behavior is not established in the source. Requires the optional <code>gmpy2</code> package; UI shows an error if unavailable.</td><td><code>extended_gcd_naive()</code>.</td></tr>
+              <tr><td><code>pow(a, e, m)</code></td><td><code>mod_pow_prebuilt()</code></td><td>Python’s three-argument modular exponentiation. The source demo describes it as C-implemented square-and-multiply.</td><td>The exact interpreter implementation and integer multiplication strategy can vary. At the algorithmic level, modular binary exponentiation is O(log E) multiplications.</td><td><code>mod_pow_square_and_multiply()</code>, or the intentionally slower <code>mod_pow_naive()</code>.</td></tr>
+              <tr><td><code>pow(a, -1, m)</code></td><td><code>mod_inverse_prebuilt()</code></td><td>Python’s modular inverse form, available in Python 3.8+ according to the source docstring.</td><td>Raises when the inverse does not exist or the modulus is invalid. The exact internal inverse algorithm is not specified by this source.</td><td>Normalize, run extended GCD, test gcd equals one, and reduce the coefficient.</td></tr>
+              <tr><td><code>%</code>, <code>*</code>, <code>//</code></td><td>Prebuilt add/multiply/inverse and quotient step</td><td>Python integer arithmetic and floor division.</td><td>Costs depend on integer size and interpreter implementation; this page does not infer a hidden algorithm.</td><td>Use <code>manual_mod()</code>, <code>naive_multiply()</code>, or the explicit quotient step already present.</td></tr>
+              <tr><td><code>time.perf_counter()</code></td><td>Timing in UI, demos, and <code>run_both()</code></td><td>High-resolution performance counter for elapsed intervals.</td><td>Measures wall-clock elapsed time, including system/runtime effects; not a proof of asymptotic complexity.</td><td>Record timestamps with another clock, though a monotonic high-resolution counter is the appropriate choice.</td></tr>
+              <tr><td><code>random.randint()</code>, <code>secrets.randbits()</code>, <code>secrets.randbelow()</code></td><td>Random tests and large-number demos</td><td>Random test generation and cryptographically stronger random sampling through <code>secrets</code>.</td><td>Random data generation is not part of calculator operation. Statistical test coverage depends on sample selection.</td><td>Supply fixed test vectors or manually construct inputs.</td></tr>
+              <tr><td>Streamlit APIs</td><td><code>st.form</code>, <code>st.text_input</code>, <code>st.sidebar.selectbox</code>, <code>st.columns</code>, <code>st.code</code>, <code>st.error</code></td><td>Framework widgets and rendering primitives; Streamlit reruns the script and uses the submitted form state to render output.</td><td>Framework behavior is external to the arithmetic algorithms. The code requires Streamlit to run the UI.</td><td>Build a web server, input parser, HTML renderer, and request/state flow manually.</td></tr>
+              <tr><td><code>int(text, base)</code></td><td><code>parse_int()</code> and CLI <code>read_int()</code></td><td>Built-in string-to-arbitrary-precision-integer conversion; this code chooses base 16 only for <code>0x</code> prefixes and base 10 otherwise.</td><td>Raises <code>ValueError</code> on invalid text. It is not a general prefix parser for binary or octal input in this usage.</td><td>Write a decimal/hex parser and digit validation logic.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout note"><strong>Reliability boundary</strong> Built-ins avoid reimplementing difficult arbitrary-precision arithmetic and are normally faster and more tested. They also hide implementation details, so this documentation reports only what the source states or what the API contract makes reliable.</div>
+      </section>
+
+      <section id="comparison">
+        <div class="section-head"><span class="section-number">07</span><h2>Current Algorithm vs Alternative</h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Algorithm</th><th>Purpose</th><th>Time complexity</th><th>Space</th><th>Advantages</th><th>Disadvantages</th><th>Suitability here</th></tr></thead>
+            <tbody>
+              <tr><td>Shift-and-subtract remainder</td><td>Manual modulo</td><td>O(L) worst</td><td>O(1)</td><td>Transparent; no modulo shortcut</td><td>Slower than optimized integer remainder</td><td>Excellent for demonstrating reduction</td></tr>
+              <tr><td>Euclidean GCD</td><td>GCD</td><td>O(log N) iterations</td><td>O(1)</td><td>Classic, short, reliable</td><td>Relies on remainder operation</td><td>Excellent for a teaching calculator</td></tr>
+              <tr><td>Binary GCD</td><td>GCD alternative</td><td>O(log N) iterations</td><td>O(1)</td><td>Uses shifts and subtraction</td><td>More branching and often more steps</td><td>Good optional bitwise lesson</td></tr>
+              <tr><td>Extended Euclid</td><td>GCD coefficients / inverse</td><td>O(log N) iterations</td><td>O(1) scalar slots</td><td>Works for any coprime positive modulus</td><td>Coefficient bookkeeping</td><td>Best general inverse algorithm here</td></tr>
+              <tr><td>Repeated multiplication</td><td>Modular power</td><td>O(E)</td><td>O(1)</td><td>Very easy to understand</td><td>Becomes impractical as E grows</td><td>Useful baseline, not a production choice</td></tr>
+              <tr><td>Square-and-multiply</td><td>Modular power</td><td>O(log E)</td><td>O(1)</td><td>Much faster with tiny state</td><td>Less visually direct than repetition</td><td>Best manual power path in this project</td></tr>
+              <tr><td>Sliding-window power</td><td>Large modular powers</td><td>O(log E) multiplications with fewer multiplies</td><td>Window-dependent precomputation</td><td>Good for repeated large exponents</td><td>More code and memory</td><td>Unnecessary for this small UI</td></tr>
+              <tr><td>Built-in / GMP arithmetic</td><td>Production-oriented comparison</td><td>Implementation-dependent; optimized</td><td>Implementation-dependent</td><td>Fast, tested, arbitrary precision</td><td>Opaque internals and dependencies</td><td>Useful reference path and performance baseline</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="mapping">
+        <div class="section-head"><span class="section-number">08</span><h2>Code-to-Algorithm Mapping</h2></div>
+        <p>The excerpts below are taken from the supplied source and connect names to behavior.</p>
+        <div class="mapping">
+          <div class="key">Function / method</div><div class="key">Concept, purpose, and complexity</div>
+          <div><code>manual_mod()</code></div><div>Shift-and-subtract binary long division; O(L) worst-case time and scalar auxiliary state.</div>
+          <div><code>naive_multiply()</code></div><div>Binary shift-and-add multiplication; O(B) loop iterations.</div>
+          <div><code>gcd_naive()</code></div><div>Euclidean recurrence using <code>manual_mod()</code>; O(log N) iterations.</div>
+          <div><code>extended_gcd_naive()</code></div><div>Iterative Bézout coefficient tracking; returns <code>(g, x, y)</code> with <code>a*x + b*y = g</code>.</div>
+          <div><code>mod_inverse_naive()</code></div><div>Normalizes, calls extended GCD, rejects gcd values other than one, and reduces the coefficient.</div>
+          <div><code>mod_add_naive()</code></div><div>Computes <code>manual_mod(a + b, m)</code>.</div>
+          <div><code>mod_mul_naive()</code></div><div>Computes <code>manual_mod(naive_multiply(a, b), m)</code>.</div>
+          <div><code>mod_pow_naive()</code></div><div>Loops <code>exp</code> times; O(E) modular multiplications. <code>NAIVE_EXP_LIMIT</code> is <code>None</code> in the supplied code.</div>
+          <div><code>mod_pow_square_and_multiply()</code></div><div>Tests exponent bits, squares the base, and conditionally multiplies; O(log E) loop iterations.</div>
+          <div><code>safe_call()</code></div><div>General programming technique: timing plus exception capture. It does not change arithmetic complexity; it adds one measured invocation boundary.</div>
+          <div><code>parse_int()</code></div><div>Input normalization: trims strings, selects decimal or hexadecimal, and raises user-facing validation errors.</div>
+          <div><code>show_side_by_side()</code></div><div>Presentation layer: renders two result/error panels using Streamlit columns.</div>
+          <div><code>main()</code></div><div>UI controller: selects operation, renders a form, parses values, dispatches to a renderer, and displays validation errors.</div>
+        </div>
+        <pre><span class="kw">def</span> <span class="fn">mod_pow_square_and_multiply</span>(base, exp, mod):
+    result = <span class="fn">manual_mod</span>(<span class="num">1</span>, mod)
+    b = <span class="fn">manual_mod</span>(base, mod)
+    e = exp
+    <span class="kw">while</span> e &gt; <span class="num">0</span>:
+        <span class="kw">if</span> e &amp; <span class="num">1</span>:
+            result = <span class="fn">manual_mod</span>(<span class="fn">naive_multiply</span>(result, b), mod)
+        b = <span class="fn">manual_mod</span>(<span class="fn">naive_multiply</span>(b, b), mod)
+        e &gt;&gt;= <span class="num">1</span>
+    <span class="kw">return</span> result</pre>
+      </section>
+
+      <section id="conclusion">
+        <div class="section-head"><span class="section-number">09</span><h2>Overall Analysis</h2></div>
+        <div class="card-grid">
+          <article class="card"><h3>Most important algorithms</h3><p>The central chain is manual remainder reduction, Euclidean GCD, extended Euclid for coefficients and inverses, and modular exponentiation. Square-and-multiply is the most important performance improvement because it changes exponentiation from linear in the exponent to logarithmic in the exponent.</p></article>
+          <article class="card"><h3>Why they fit</h3><p>They are compact, understandable, use little auxiliary memory, support arbitrary-precision Python integers, and create a meaningful side-by-side comparison with the prebuilt routes.</p></article>
+          <article class="card"><h3>Potential improvements</h3><p>Enable a real exponent safety limit or default the UI to square-and-multiply for large exponents. Add a visible “results match” indicator, validate that moduli are positive before every modular operation, and handle missing <code>gmpy2</code> with a clear dependency message.</p></article>
+          <article class="card"><h3>Performance optimizations</h3><p>Use built-in or audited big-integer operations for production workloads, reduce duplicate work when only one result is needed, and benchmark with multiple input sizes rather than one timing sample. For repeated large modular powers, consider Montgomery reduction or a sliding window.</p></article>
+        </div>
+        <div class="callout warning">
+          <strong>Concrete source issue in the CLI path</strong>
+          In <code>calculator()</code>, the expression <code>if exp &gt; NAIVE_EXP_LIMIT:</code> compares an integer with <code>None</code>, but the supplied constant is <code>NAIVE_EXP_LIMIT = None</code>. In Python this raises <code>TypeError</code> after option 6 completes. The Streamlit UI does not execute this comparison, but the CLI path should guard it with <code>NAIVE_EXP_LIMIT is not None and exp &gt; NAIVE_EXP_LIMIT</code>.
+        </div>
+        <div class="callout note">
+          <strong>Would changing the algorithm matter?</strong>
+          For small classroom inputs, the visible difference may be negligible and the current manual code is valuable precisely because it is inspectable. For large exponents, changing from repeated multiplication to square-and-multiply is a meaningful improvement. For production-scale or security-sensitive arithmetic, replacing the instructional manual routines with mature, audited implementations is more important than micro-optimizing these loops.
+        </div>
+      </section>
+
+      <footer>
+        <p><strong>Accuracy note:</strong> This page documents behavior present in <code>cpython.py</code> and <code>calculatorUi.py</code>. Where a built-in, external library, Python runtime, or Streamlit internals are opaque, the documentation says so instead of assigning an unverified implementation.</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>
