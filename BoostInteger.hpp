@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <sstream>
 #include <vector>
+#include <limits>
 
 #include "naive.hpp"
 
@@ -228,18 +229,13 @@ namespace boost_mimic
 
         void multiply_by_10()
         {
-            uint512_t original = *this;
-            this->shift_left_1();     // x * 2
-            this->shift_left_1();     // x * 4
-            original.shift_left_1();  // x * 2
-            this->subtract(original); // (x*4) - (x*2) = invalid check step, wait:
-            // Proper base-10 expansion shifts: x*10 = (x*8) + (x*2)
-            uint512_t x2 = original;
-            x2.shift_left_1();
-            uint512_t x8 = original;
-            x8.shift_left_1();
-            x8.shift_left_1();
-            x8.shift_left_1();
+            // x*10 = (x*8) + (x*2)
+            uint512_t x2 = *this;
+            x2.shift_left_1(); // x * 2
+            uint512_t x8 = *this;
+            x8.shift_left_1(); // x * 2
+            x8.shift_left_1(); // x * 4
+            x8.shift_left_1(); // x * 8
             x8.add(x2);
             *this = x8;
         }
@@ -377,26 +373,32 @@ namespace boost_mimic
     // Computes x such that (a * x) ≡ 1 (mod m)
     uint512_t mod_inverse(uint512_t a, uint512_t m)
     {
-        uint512_t t = 0;
-        uint512_t newt = 1;
+        // Extended Euclidean algorithm, done entirely in unsigned arithmetic
+        // (uint512_t has no sign) by keeping the Bezout coefficient for 'a'
+        // reduced modulo m at every step instead of letting it go negative.
+        uint512_t old_r = a % m;
         uint512_t r = m;
-        uint512_t newr = a;
+        uint512_t old_t = 1;
+        uint512_t t = 0;
 
-        while (!newr.is_zero())
+        while (!r.is_zero())
         {
-            uint512_t quotient = div_simple(r, newr);
+            uint512_t quotient = div_simple(old_r, r);
 
-            uint512_t tmp_r = r;
-            uint512_t sub_r = multiply_simple(quotient, newr);
-            tmp_r.subtract(sub_r);
-            r = newr;
-            newr = tmp_r;
+            uint512_t new_r = old_r - quotient * r;
+            old_r = r;
+            r = new_r;
+
+            uint512_t qt_mod = (quotient * t) % m;
+            uint512_t new_t = (old_t >= qt_mod) ? (old_t - qt_mod) : (old_t + m - qt_mod);
+            new_t = new_t % m;
+            old_t = t;
+            t = new_t;
         }
-        if (r.less_than(2) && !r.is_zero())
-        {
-            return newt; // Handled base wrapper safely
-        }
-        return 0; // Not invertible
+
+        if (old_r == uint512_t(1))
+            return old_t % m; // invertible
+        return 0; // gcd(a, m) != 1 -> not invertible
     }
 
     // ============================================================================
@@ -470,15 +472,13 @@ namespace boost_mimic
             uint512_t ten(10);
             while (!n.is_zero())
             {
+                uint512_t q = div_simple(n, ten);
+                uint512_t prod = multiply_simple(q, ten);
                 uint512_t rem = n;
-                uint64_t digit = 0;
-                while (!rem.less_than(ten))
-                {
-                    rem.subtract(ten);
-                    ++digit;
-                }
+                rem.subtract(prod); // rem = n - q*10, a single digit 0-9
+                uint64_t digit = rem.limbs[0];
                 digits.push_back(static_cast<char>('0' + digit));
-                n = div_simple(n, ten);
+                n = q;
             }
             std::reverse(digits.begin(), digits.end());
             return (neg && !value.is_zero()) ? "-" + digits : digits;

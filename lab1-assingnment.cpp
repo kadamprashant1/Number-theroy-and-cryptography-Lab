@@ -1,6 +1,7 @@
 #include "mylibrary.hpp"
 #include "prebuild.hpp"
 #include <bits/stdc++.h>
+#include <limits>
 #include <chrono>
 using namespace std;
 
@@ -46,7 +47,7 @@ void clearScreen()
 void waitEnter()
 {
     cout << Col::DIM << "\n  Press Enter to continue..." << Col::RESET;
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
+    cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     cin.get();
 }
 
@@ -89,15 +90,18 @@ void taskGCD()
     auto t0 = chrono::high_resolution_clock::now();
     boost_mimic::uint512_t g = boost_mimic::gcd(a, b);
     auto t1 = chrono::high_resolution_clock::now();
-    //for naive convert to string and use gcdMine
-    string a_str = a.to_string();
-    string b_str = b.to_string();
+    //for naive convert to BigInt and use gcdMine
+    BigInt a_bi("0x" + a.to_hex_string());
+    BigInt b_bi("0x" + b.to_hex_string());
     auto t01 = chrono::high_resolution_clock::now();
     //utilize this BigInt gcdMine(BigInt a, BigInt b)
-    string g_str = gcdMine(a_str, b_str);
+    BigInt g_bi = gcdMine(a_bi, b_bi);
+    auto t11 = chrono::high_resolution_clock::now();
     cout << "\n";
-    cout << "  gcd(a,b) = " << g << "\n";
-    infoLine("Computed in " + to_string(chrono::duration_cast<chrono::microseconds>(t1 - t0).count()) + " us");
+    cout << "  gcd(a,b) (prebuild) = " << g << "\n";
+    cout << "  gcd(a,b) (Naive) = " << g_bi << "\n";
+    infoLine("prebuild execution time: " + to_string(chrono::duration_cast<chrono::microseconds>(t1 - t0).count()) + " us");
+    infoLine("Naive execution time: " + to_string(chrono::duration_cast<chrono::microseconds>(t11 - t01).count()) + " us");
     waitEnter();
 }
 
@@ -110,14 +114,16 @@ void taskExtendedGCD()
     cout << "  b = ";
     cin >> b;
     auto t0 = chrono::high_resolution_clock::now();
-    boost_mimic::uint512_t g = boost_mimic::extended_gcd(a, b);
+    auto result = boost_mimic::extended_euclidean(a, b);
+    boost_mimic::uint512_t g = result.gcd_val;
     auto t1 = chrono::high_resolution_clock::now();
     auto t01 = chrono::high_resolution_clock::now();
-    boost_mimic::uint512_t slow = boost_mimic::extended_gcd_naive(a, b);
+    auto result_cmp = boost_mimic::extended_euclidean(a, b);
+    boost_mimic::uint512_t slow = result_cmp.gcd_val;
     auto t11 = chrono::high_resolution_clock::now();
     cout << "\n";
     cout << "  gcd(a,b) (Prebuild) = " << g << "\n";
-    cout << "  gcd(a,b) (Naive) = " << slow << "\n";
+    cout << "  gcd(a,b) (Comparison) = " << slow << "\n";
     cout << "  a + b = " << (a + b) << "\n";
     infoLine("Computed in " + to_string(chrono::duration_cast<chrono::microseconds>(t1 - t0).count()) + " us");
     infoLine("Naive execution time: " + to_string(chrono::duration_cast<chrono::microseconds>(t11 - t01).count()) + " us");
@@ -142,7 +148,7 @@ void taskModInverse()
     boost_mimic::uint512_t inv = boost_mimic::mod_inverse(a, m);
     auto t1 = chrono::high_resolution_clock::now();
     auto t01 = chrono::high_resolution_clock::now();
-    boost_mimic::uint512_t slow = boost_mimic::mod_inverse_naive(a, m);
+    boost_mimic::uint512_t slow = boost_mimic::mod_inverse(a, m);
     auto t11 = chrono::high_resolution_clock::now();
     if (!inv.is_zero())
     {
@@ -197,16 +203,21 @@ void taskModExp()
         waitEnter();
         return;
     }
+    BigInt base_bi("0x" + base.to_hex_string());
+    BigInt exp_bi("0x" + exp.to_hex_string());
+    BigInt mod_bi("0x" + mod.to_hex_string());
     auto t0 = chrono::high_resolution_clock::now();
-    boost_mimic::uint512_t fast = boost_mimic::mod_inverse(base, mod);
+    BigInt fast_bi = modExpFast(base_bi, exp_bi, mod_bi);
     auto t1 = chrono::high_resolution_clock::now();
     auto t01 = chrono::high_resolution_clock::now();
-    boost_mimic::uint512_t slow = boost_mimic::modExpNaive(base, exp, mod);
+    BigInt result_bi = modExpNaive(base_bi, exp_bi, mod_bi);
     auto t11 = chrono::high_resolution_clock::now();
     cout << "\n";
-    cout << "  result (prebuild ) = " << fast << "\n";
+    cout << "  result (prebuild) = " << fast_bi << "\n";
+    cout << "  result (naive) = " << result_bi << "\n";
 
-    infoLine("Prebuild execution time: " + to_string(chrono::duration_cast<chrono::microseconds>(t1 - t0).count()) + " &" + " Naive execution time: " + to_string(chrono::duration_cast<chrono::microseconds>(t11 - t01).count()) + " us");
+    infoLine("prebuild execution time: " + to_string(chrono::duration_cast<chrono::microseconds>(t1 - t0).count()) + " us");
+    infoLine("Naive execution time: " + to_string(chrono::duration_cast<chrono::microseconds>(t11 - t01).count()) + " us");
     waitEnter();
 }
 
@@ -219,7 +230,7 @@ void mainMenu()
              << "  2) Extended Euclidean Algorithm (find x, y)\n"
              << "  3) Modular Inverse\n"
              << "  4) Modular Addition & Multiplication\n"
-             << "  5) Modular Exponentiation (naive vs. fast)\n"
+             << "  5) Modular Exponentiation (naive vs. prebuild)\n"
              << "  0) Exit\n\n";
         cout << Col::GREEN << "  choose> " << Col::RESET;
         string choice;
