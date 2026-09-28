@@ -20,8 +20,8 @@ Operations covered:
     6. Modular exponentiation
 
 Run:
-    python modular_arithmetic_lab.py            -> demo + correctness tests + timing experiment
-    python modular_arithmetic_lab.py --calc      -> interactive calculator (naive + prebuilt, every op)
+    python cpython.py            -> demo + correctness tests + timing experiment
+    python cpython.py --calc      -> interactive calculator (naive + prebuilt, every op)
 """
 
 import math
@@ -490,7 +490,8 @@ def calculator() -> None:
             exp = read_int("  exponent (>= 0) = ")
             m = read_int("  modulus m = ")
             run_both("Modular exponentiation  a^exp mod m", mod_pow_naive, mod_pow_prebuilt, (a, exp, m))
-            if exp > NAIVE_EXP_LIMIT:
+
+            if NAIVE_EXP_LIMIT is not None and exp > NAIVE_EXP_LIMIT:
                 print(f"  (note: naive was skipped -- exponent > {NAIVE_EXP_LIMIT:,} safety cap)")
             print("  extra: hand-written square-and-multiply (not naive, not library):")
             t0 = time.perf_counter()
@@ -512,4 +513,3 @@ if __name__ == "__main__":
         run_big_number_demo()
         run_timing_experiment()
         print("Run again with `--calc` for the interactive calculator, e.g.:")
-        print("    python modular_arithmetic_lab.py --calc")

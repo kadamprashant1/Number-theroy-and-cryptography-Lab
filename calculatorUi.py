@@ -19,6 +19,12 @@ from cpython import (
     mod_pow_square_and_multiply,
 )
 
+# FIX: NAIVE_EXP_LIMIT from the backend is None (no cap), so a large exponent
+# entered in the form would run the O(exponent) naive loop synchronously and
+# can hang the whole Streamlit session. Cap it here in the UI only -- the
+# backend's own semantics (uncapped) are left untouched.
+EXPONENT_SAFETY_CAP = 200_000
+
 
 def parse_int(raw_value: str, field_name: str) -> int:
     value = raw_value.strip()
@@ -109,14 +115,23 @@ def render_mod_mul(a: int, b: int, m: int):
 
 
 def render_mod_pow(base: int, exponent: int, mod: int):
-    
-    naive_result, naive_error, naive_time = safe_call(mod_pow_naive, base, exponent, mod)
-    naive_label = "Naive Modular Exponentiation"
+    st.markdown(f"**Expression:** {base}^{exponent} mod {mod}")
+
+    # FIX: guard the naive O(exponent) loop against very large exponents so
+    # a single form submission can't freeze the whole app.
+    if exponent >= 0 and exponent > EXPONENT_SAFETY_CAP:
+        naive_result, naive_time = None, 0.0
+        naive_error = (
+            f"Skipped: exponent {exponent:,} exceeds the UI safety cap "
+            f"({EXPONENT_SAFETY_CAP:,}); the naive O(exponent) loop would "
+            f"take too long. Try a smaller exponent to see the naive method."
+        )
+    else:
+        naive_result, naive_error, naive_time = safe_call(mod_pow_naive, base, exponent, mod)
 
     prebuilt_result, prebuilt_error, prebuilt_time = safe_call(mod_pow_prebuilt, base, exponent, mod)
 
-    st.markdown(f"**Expression:** {base}^{exponent} mod {mod}")
-    show_side_by_side(naive_label, naive_result, naive_error, naive_time, "Prebuilt Modular Exponentiation", prebuilt_result, prebuilt_error, prebuilt_time)
+    show_side_by_side("Naive Modular Exponentiation", naive_result, naive_error, naive_time, "Prebuilt Modular Exponentiation", prebuilt_result, prebuilt_error, prebuilt_time)
 
     if exponent >= 0:
         bonus_result, bonus_error, bonus_time = safe_call(mod_pow_square_and_multiply, base, exponent, mod)
@@ -144,11 +159,14 @@ def main():
     )
 
     with st.form("math_form"):
-        if operation in {"GCD", "Extended Euclidean Algorithm", "Modular Inverse"}:
+        if operation in {"GCD", "Extended Euclidean Algorithm"}:
             a = st.text_input("a", value="")
             b = st.text_input("b", value="")
-            if operation == "Modular Inverse":
-                m = st.text_input("m", value="")
+        elif operation == "Modular Inverse":
+            # FIX: this op only needs a and m -- the old code also showed an
+            # unused "b" field here.
+            a = st.text_input("a", value="")
+            m = st.text_input("m", value="")
         elif operation in {"Modular Addition", "Modular Multiplication"}:
             a = st.text_input("a", value="")
             b = st.text_input("b", value="")
