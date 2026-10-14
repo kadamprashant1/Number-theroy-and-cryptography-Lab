@@ -1,5 +1,5 @@
 import time
-
+import readline
 import streamlit as st
 
 from cpython import (
@@ -19,10 +19,6 @@ from cpython import (
     mod_pow_square_and_multiply,
 )
 
-# FIX: NAIVE_EXP_LIMIT from the backend is None (no cap), so a large exponent
-# entered in the form would run the O(exponent) naive loop synchronously and
-# can hang the whole Streamlit session. Cap it here in the UI only -- the
-# backend's own semantics (uncapped) are left untouched.
 EXPONENT_SAFETY_CAP = 200_000
 
 
@@ -42,7 +38,7 @@ def safe_call(func, *args):
     try:
         result = func(*args)
         error = None
-    except Exception as exc:  # pragma: no cover - UI error handling
+    except Exception as exc: 
         result = None
         error = exc
     elapsed = time.perf_counter() - start
@@ -117,8 +113,6 @@ def render_mod_mul(a: int, b: int, m: int):
 def render_mod_pow(base: int, exponent: int, mod: int):
     st.markdown(f"**Expression:** {base}^{exponent} mod {mod}")
 
-    # FIX: guard the naive O(exponent) loop against very large exponents so
-    # a single form submission can't freeze the whole app.
     if exponent >= 0 and exponent > EXPONENT_SAFETY_CAP:
         naive_result, naive_time = None, 0.0
         naive_error = (
@@ -135,7 +129,7 @@ def render_mod_pow(base: int, exponent: int, mod: int):
 
     if exponent >= 0:
         bonus_result, bonus_error, bonus_time = safe_call(mod_pow_square_and_multiply, base, exponent, mod)
-        st.subheader("Bonus: Square-and-Multiply")
+        st.subheader("Square-and-Multiply")
         if bonus_error is None:
             st.code(str(bonus_result))
             st.caption(f"Time: {bonus_time:.6f}s")

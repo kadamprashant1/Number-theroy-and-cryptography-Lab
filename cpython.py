@@ -1,24 +1,6 @@
 """
 LAB 1 -- Modular Arithmetic and Extended Euclidean Algorithm
 ==============================================================
-
-For EVERY operation below, two independent implementations are provided:
-
-    (1) NAIVE / MANUAL   -- written from scratch, no library shortcuts
-    (2) PREBUILT/LIBRARY -- Python's built-in / standard-library equivalent
-
-Whenever an operation is invoked, BOTH implementations run, one right
-after the other, each timed SEPARATELY, and both the result and the
-timing of each approach are printed to the screen.
-
-Operations covered:
-    1. GCD
-    2. Extended Euclidean Algorithm   (ax + by = gcd(a,b))
-    3. Modular inverse
-    4. Modular addition
-    5. Modular multiplication
-    6. Modular exponentiation
-
 Run:
     python cpython.py            -> demo + correctness tests + timing experiment
     python cpython.py --calc      -> interactive calculator (naive + prebuilt, every op)
@@ -29,6 +11,7 @@ import random
 import secrets
 import sys
 import time
+import readline
 
 try:
     import gmpy2
@@ -37,10 +20,6 @@ except ImportError:
     HAVE_GMPY2 = False
 
 
-# ===========================================================================
-#  Small "from scratch" primitives used by the NAIVE implementations
-#  (so the naive versions don't secretly lean on Python's % or built-in pow)
-# ===========================================================================
 def manual_mod(x: int, m: int) -> int:
     """
     Remainder of x mod m, computed by hand with binary long division
@@ -99,12 +78,8 @@ def gcd_prebuilt(a: int, b: int) -> int:
     return math.gcd(a, b)
 
 
-# ===========================================================================
-# 2. Extended Euclidean Algorithm
-# ===========================================================================
 def extended_gcd_naive(a: int, b: int):
     """
-    Hand-written iterative extended Euclidean algorithm.
     Returns (g, x, y) with a*x + b*y = g = gcd(a, b), g >= 0.
     """
     sign_a = -1 if a < 0 else 1
@@ -116,20 +91,18 @@ def extended_gcd_naive(a: int, b: int):
     old_t, t = 0, 1
 
     while r != 0:
-        q = old_r // r          # quotient only -- see note below
+        q = old_r // r        
         old_r, r = r, old_r - naive_multiply(q, r)
         old_s, s = s, old_s - naive_multiply(q, s)
         old_t, t = t, old_t - naive_multiply(q, t)
 
     return old_r, old_s * sign_a, old_t * sign_b
-    # NOTE: `//` here is only used to find the quotient for the subtraction
-    # step; manual_mod above already demonstrates hand-rolled division.
 
 
 def extended_gcd_prebuilt(a: int, b: int):
     """
     Library implementation via gmpy2.gcdext(a, b) -> (x, y, g) with
-    a*x + b*y = g.  Requires `pip install gmpy2`.
+    a*x + b*y = g.
     """
     if not HAVE_GMPY2:
         raise RuntimeError("gmpy2 is not installed -- run: pip install gmpy2")
@@ -137,9 +110,6 @@ def extended_gcd_prebuilt(a: int, b: int):
     return int(g), int(x), int(y)
 
 
-# ===========================================================================
-# 3. Modular inverse
-# ===========================================================================
 def mod_inverse_naive(a: int, m: int) -> int:
     """Hand-written: uses our own extended_gcd_naive."""
     if m <= 0:
@@ -156,9 +126,6 @@ def mod_inverse_prebuilt(a: int, m: int) -> int:
     return pow(a, -1, m)
 
 
-# ===========================================================================
-# 4. Modular addition
-# ===========================================================================
 def mod_add_naive(a: int, b: int, m: int) -> int:
     """Hand-written: plain addition, reduced with manual_mod (no % operator)."""
     return manual_mod(a + b, m)
@@ -168,10 +135,6 @@ def mod_add_prebuilt(a: int, b: int, m: int) -> int:
     """Library implementation: Python's built-in % operator."""
     return (a + b) % m
 
-
-# ===========================================================================
-# 5. Modular multiplication
-# ===========================================================================
 def mod_mul_naive(a: int, b: int, m: int) -> int:
     """Hand-written: shift-and-add multiply, reduced with manual_mod."""
     return manual_mod(naive_multiply(a, b), m)
@@ -182,19 +145,10 @@ def mod_mul_prebuilt(a: int, b: int, m: int) -> int:
     return (a * b) % m
 
 
-# ===========================================================================
-# 6. Modular exponentiation
-# ===========================================================================
-NAIVE_EXP_LIMIT = None  # no safety cap: allow the naive implementation to run freely
+NAIVE_EXP_LIMIT = None 
 
 
 def mod_pow_naive(base: int, exp: int, mod: int) -> int:
-    """
-    Hand-written, truly naive approach: multiply the result into itself
-    `exp` times. O(exp) modular multiplications -- this is the whole point
-    of comparing it against the built-in, which is orders of magnitude
-    faster for large exponents.
-    """
     if exp < 0:
         raise ValueError("only non-negative exponents supported")
     if NAIVE_EXP_LIMIT is not None and exp > NAIVE_EXP_LIMIT:
@@ -215,8 +169,7 @@ def mod_pow_prebuilt(base: int, exp: int, mod: int) -> int:
     return pow(base, exp, mod)
 
 
-# Kept as a bonus -- the "real-world" hand-written algorithm (not naive,
-# not a library call) that professional crypto code actually uses.
+
 def mod_pow_square_and_multiply(base: int, exp: int, mod: int) -> int:
     """Hand-written square-and-multiply. O(log exp) modular multiplications."""
     if exp < 0:
@@ -232,9 +185,7 @@ def mod_pow_square_and_multiply(base: int, exp: int, mod: int) -> int:
     return result
 
 
-# ===========================================================================
-# Generic "run both ways" helper
-# ===========================================================================
+#
 def run_both(op_name, naive_fn, prebuilt_fn, args,
              naive_label="NAIVE (manual)", prebuilt_label="PREBUILT (library)"):
     """
@@ -286,9 +237,7 @@ def run_both(op_name, naive_fn, prebuilt_fn, args,
     return naive_result, prebuilt_result, t_naive, t_prebuilt
 
 
-# ===========================================================================
-# Correctness tests -- naive vs prebuilt, on lots of random inputs
-# ===========================================================================
+
 def run_correctness_tests(trials: int = 1000) -> None:
     print("=" * 78)
     print("CORRECTNESS TESTS  (naive vs. prebuilt, on random inputs)")
@@ -338,9 +287,7 @@ def run_correctness_tests(trials: int = 1000) -> None:
     print(f"All {trials} random trials passed for every naive/prebuilt pair.{gmpy2_note} \u2714\n")
 
 
-# ===========================================================================
-# Full demo: run every operation, naive then prebuilt, back to back
-# ===========================================================================
+
 def run_full_demo() -> None:
     print("=" * 78)
     print("DEMO -- every operation, naive approach then prebuilt approach")
@@ -380,9 +327,7 @@ def run_big_number_demo() -> None:
     print()
 
 
-# ===========================================================================
-# Timing experiment: naive vs prebuilt exponentiation, growing exponent
-# ===========================================================================
+
 def run_timing_experiment() -> None:
     print("=" * 78)
     print("EXPERIMENT: modular exponentiation -- naive loop vs. prebuilt pow()")
@@ -419,9 +364,7 @@ def run_timing_experiment() -> None:
     print()
 
 
-# ===========================================================================
-# Calculator application (every operation offers BOTH approaches)
-# ===========================================================================
+
 MENU = """
 ==================== MODULAR ARITHMETIC CALCULATOR ====================
 Every operation below runs its NAIVE (manual) implementation, then its
