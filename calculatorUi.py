@@ -1,7 +1,7 @@
 import time
-import readline
 import streamlit as st
 
+from crt import rsa_decryption_experiment, solve_crt
 from cpython import (
     NAIVE_EXP_LIMIT,
     extended_gcd_naive,
@@ -137,74 +137,154 @@ def render_mod_pow(base: int, exponent: int, mod: int):
             st.error(f"{bonus_error}")
 
 
+def parse_congruence_lines(raw_value: str) -> list[tuple[int, int]]:
+    congruences = []
+    for line_number, line in enumerate(raw_value.splitlines(), start=1):
+        if not line.strip():
+            continue
+        parts = line.split(",")
+        if len(parts) != 2:
+            raise ValueError(
+                f"Line {line_number} must contain a residue and modulus "
+                "separated by a comma."
+            )
+        congruences.append(
+            (
+                parse_int(parts[0], f"residue on line {line_number}"),
+                parse_int(parts[1], f"modulus on line {line_number}"),
+            )
+        )
+    if not congruences:
+        raise ValueError("Enter at least one congruence.")
+    return congruences
+
+
 def main():
     st.set_page_config(page_title="Number Theory Calculator", layout="wide")
     st.title("Number Theory and Cryptography Lab")
-    operation = st.sidebar.selectbox(
-        "Choose operation",
-        [
-            "GCD",
-            "Extended Euclidean Algorithm",
-            "Modular Inverse",
-            "Modular Addition",
-            "Modular Multiplication",
-            "Modular Exponentiation",
-        ],
+    arithmetic_tab, crt_tab, rsa_tab = st.tabs(
+        ["Modular Arithmetic", "Generalized CRT", "RSA CRT Comparison"]
     )
 
-    with st.form("math_form"):
-        if operation in {"GCD", "Extended Euclidean Algorithm"}:
-            a = st.text_input("a", value="")
-            b = st.text_input("b", value="")
-        elif operation == "Modular Inverse":
-            # FIX: this op only needs a and m -- the old code also showed an
-            # unused "b" field here.
-            a = st.text_input("a", value="")
-            m = st.text_input("m", value="")
-        elif operation in {"Modular Addition", "Modular Multiplication"}:
-            a = st.text_input("a", value="")
-            b = st.text_input("b", value="")
-            m = st.text_input("m", value="")
-        else:
-            base = st.text_input("base", value="")
-            exponent = st.text_input("exponent", value="")
-            mod = st.text_input("modulus", value="")
+    with arithmetic_tab:
+        operation = st.selectbox(
+            "Choose operation",
+            [
+                "GCD",
+                "Extended Euclidean Algorithm",
+                "Modular Inverse",
+                "Modular Addition",
+                "Modular Multiplication",
+                "Modular Exponentiation",
+            ],
+        )
 
-        submitted = st.form_submit_button("Calculate")
+        with st.form("math_form"):
+            if operation in {"GCD", "Extended Euclidean Algorithm"}:
+                a = st.text_input("a", value="")
+                b = st.text_input("b", value="")
+            elif operation == "Modular Inverse":
+                a = st.text_input("a", value="")
+                m = st.text_input("m", value="")
+            elif operation in {"Modular Addition", "Modular Multiplication"}:
+                a = st.text_input("a", value="")
+                b = st.text_input("b", value="")
+                m = st.text_input("m", value="")
+            else:
+                base = st.text_input("base", value="")
+                exponent = st.text_input("exponent", value="")
+                mod = st.text_input("modulus", value="")
 
-    if not submitted:
-        return
+            submitted = st.form_submit_button("Calculate")
 
-    try:
-        if operation == "GCD":
-            a_int = parse_int(a, "a")
-            b_int = parse_int(b, "b")
-            render_gcd(a_int, b_int)
-        elif operation == "Extended Euclidean Algorithm":
-            a_int = parse_int(a, "a")
-            b_int = parse_int(b, "b")
-            render_extended_gcd(a_int, b_int)
-        elif operation == "Modular Inverse":
-            a_int = parse_int(a, "a")
-            m_int = parse_int(m, "m")
-            render_mod_inverse(a_int, m_int)
-        elif operation == "Modular Addition":
-            a_int = parse_int(a, "a")
-            b_int = parse_int(b, "b")
-            m_int = parse_int(m, "m")
-            render_mod_add(a_int, b_int, m_int)
-        elif operation == "Modular Multiplication":
-            a_int = parse_int(a, "a")
-            b_int = parse_int(b, "b")
-            m_int = parse_int(m, "m")
-            render_mod_mul(a_int, b_int, m_int)
-        else:
-            base_int = parse_int(base, "base")
-            exponent_int = parse_int(exponent, "exponent")
-            mod_int = parse_int(mod, "modulus")
-            render_mod_pow(base_int, exponent_int, mod_int)
-    except ValueError as exc:
-        st.error(str(exc))
+        if submitted:
+            try:
+                if operation == "GCD":
+                    render_gcd(parse_int(a, "a"), parse_int(b, "b"))
+                elif operation == "Extended Euclidean Algorithm":
+                    render_extended_gcd(parse_int(a, "a"), parse_int(b, "b"))
+                elif operation == "Modular Inverse":
+                    render_mod_inverse(parse_int(a, "a"), parse_int(m, "m"))
+                elif operation == "Modular Addition":
+                    render_mod_add(
+                        parse_int(a, "a"), parse_int(b, "b"), parse_int(m, "m")
+                    )
+                elif operation == "Modular Multiplication":
+                    render_mod_mul(
+                        parse_int(a, "a"), parse_int(b, "b"), parse_int(m, "m")
+                    )
+                else:
+                    render_mod_pow(
+                        parse_int(base, "base"),
+                        parse_int(exponent, "exponent"),
+                        parse_int(mod, "modulus"),
+                    )
+            except ValueError as exc:
+                st.error(str(exc))
+
+    with crt_tab:
+        st.write("Enter `residue,modulus` pair per line.")
+        with st.form("crt_form"):
+            raw_congruences = st.text_area(
+                "Congruences", value="2,3\n3,5\n2,7", height=140
+            )
+            crt_submitted = st.form_submit_button("Solve CRT")
+
+        if crt_submitted:
+            try:
+                congruences = parse_congruence_lines(raw_congruences)
+                residue, modulus = solve_crt(congruences)
+                st.success(f"x ≡ {residue} (mod {modulus})")
+                st.caption(
+                    f"Smallest non-negative solution: {residue}. "
+                    f"All solutions differ by a multiple of {modulus}."
+                )
+            except ValueError as exc:
+                st.error(str(exc))
+
+    with rsa_tab:
+        st.write(
+            ""
+        )
+        with st.form("rsa_form"):
+            p_value = st.text_input("Prime p", value="1009")
+            q_value = st.text_input("Prime q", value="1013")
+            e_value = st.text_input("Public exponent e", value="65537")
+            rsa_submitted = st.form_submit_button("Compare decryption")
+
+        if rsa_submitted:
+            try:
+                p_int = parse_int(p_value, "p")
+                q_int = parse_int(q_value, "q")
+                result = rsa_decryption_experiment(
+                    p_int,
+                    q_int,
+                    parse_int(e_value, "e"),
+                    min(12345, p_int * q_int - 1),
+                )
+                st.write(f"Ciphertext: `{result['ciphertext']}`")
+                st.write(f"Private exponent d: `{result['private_exponent']}`")
+                st.write(f"Normal decryption: `{result['normal_result']}`")
+                st.write(f"CRT decryption: `{result['crt_result']}`")
+                normal_time = float(result["normal_seconds"])
+                crt_time = float(result["crt_seconds"])
+                show_side_by_side(
+                    "Normal RSA decryption",
+                    result["normal_result"],
+                    None,
+                    normal_time,
+                    "CRT-based RSA decryption",
+                    result["crt_result"],
+                    None,
+                    crt_time,
+                )
+                if crt_time > 0:
+                    st.caption(f"Measured speedup: {normal_time / crt_time:.2f}×")
+                st.caption(
+                    "."
+                )
+            except ValueError as exc:
+                st.error(str(exc))
 
 
 if __name__ == "__main__":

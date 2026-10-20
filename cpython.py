@@ -11,7 +11,6 @@ import random
 import secrets
 import sys
 import time
-import readline
 
 try:
     import gmpy2
