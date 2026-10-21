@@ -93,7 +93,11 @@ def render_extended_gcd(a: int, b: int):
 def render_mod_inverse(a: int, m: int):
     naive_result, naive_error, naive_time = safe_call(mod_inverse_naive, a, m)
     prebuilt_result, prebuilt_error, prebuilt_time = safe_call(mod_inverse_prebuilt, a, m)
-    show_side_by_side("Naive Modular Inverse", naive_result, naive_error, naive_time, "Prebuilt Modular Inverse", prebuilt_result, prebuilt_error, prebuilt_time)
+    show_sid
+    if m == 0:
+        raise ZeroDivisionError("modulo by zero")
+    m_abs = abs(m)
+    nege_by_side("Naive Modular Inverse", naive_result, naive_error, naive_time, "Prebuilt Modular Inverse", prebuilt_result, prebuilt_error, prebuilt_time)
 
 
 def render_mod_add(a: int, b: int, m: int):
@@ -162,8 +166,8 @@ def parse_congruence_lines(raw_value: str) -> list[tuple[int, int]]:
 def main():
     st.set_page_config(page_title="Number Theory Calculator", layout="wide")
     st.title("Number Theory and Cryptography Lab")
-    arithmetic_tab, crt_tab, rsa_tab = st.tabs(
-        ["Modular Arithmetic", "Generalized CRT", "RSA CRT Comparison"]
+    arithmetic_tab, crt_tab = st.tabs( #, rsa_tab 
+        ["Modular Arithmetic", "Generalized CRT" ] #"RSA CRT Comparison"
     )
 
     with arithmetic_tab:
@@ -235,56 +239,53 @@ def main():
                 congruences = parse_congruence_lines(raw_congruences)
                 residue, modulus = solve_crt(congruences)
                 st.success(f"x ≡ {residue} (mod {modulus})")
-                st.caption(
-                    f"Smallest non-negative solution: {residue}. "
-                    f"All solutions differ by a multiple of {modulus}."
-                )
+
             except ValueError as exc:
                 st.error(str(exc))
 
-    with rsa_tab:
-        st.write(
-            ""
-        )
-        with st.form("rsa_form"):
-            p_value = st.text_input("Prime p", value="1009")
-            q_value = st.text_input("Prime q", value="1013")
-            e_value = st.text_input("Public exponent e", value="65537")
-            rsa_submitted = st.form_submit_button("Compare decryption")
+    #  with rsa_tab:
+    #     st.write(
+    #         ""
+    #     )
+    #     with st.form("rsa_form"):
+    #         p_value = st.text_input("Prime p", value="1009")
+    #         q_value = st.text_input("Prime q", value="1013")
+    #         e_value = st.text_input("Public exponent e", value="65537")
+    #         rsa_submitted = st.form_submit_button("Compare decryption")
 
-        if rsa_submitted:
-            try:
-                p_int = parse_int(p_value, "p")
-                q_int = parse_int(q_value, "q")
-                result = rsa_decryption_experiment(
-                    p_int,
-                    q_int,
-                    parse_int(e_value, "e"),
-                    min(12345, p_int * q_int - 1),
-                )
-                st.write(f"Ciphertext: `{result['ciphertext']}`")
-                st.write(f"Private exponent d: `{result['private_exponent']}`")
-                st.write(f"Normal decryption: `{result['normal_result']}`")
-                st.write(f"CRT decryption: `{result['crt_result']}`")
-                normal_time = float(result["normal_seconds"])
-                crt_time = float(result["crt_seconds"])
-                show_side_by_side(
-                    "Normal RSA decryption",
-                    result["normal_result"],
-                    None,
-                    normal_time,
-                    "CRT-based RSA decryption",
-                    result["crt_result"],
-                    None,
-                    crt_time,
-                )
-                if crt_time > 0:
-                    st.caption(f"Measured speedup: {normal_time / crt_time:.2f}×")
-                st.caption(
-                    "."
-                )
-            except ValueError as exc:
-                st.error(str(exc))
+    #     if rsa_submitted:
+    #         try:
+    #             p_int = parse_int(p_value, "p")
+    #             q_int = parse_int(q_value, "q")
+    #             result = rsa_decryption_experiment(
+    #                 p_int,
+    #                 q_int,
+    #                 parse_int(e_value, "e"),
+    #                 min(12345, p_int * q_int - 1),
+    #             )
+    #             st.write(f"Ciphertext: `{result['ciphertext']}`")
+    #             st.write(f"Private exponent d: `{result['private_exponent']}`")
+    #             st.write(f"Normal decryption: `{result['normal_result']}`")
+    #             st.write(f"CRT decryption: `{result['crt_result']}`")
+    #             normal_time = float(result["normal_seconds"])
+    #             crt_time = float(result["crt_seconds"])
+    #             show_side_by_side(
+    #                 "Normal RSA decryption",
+    #                 result["normal_result"],
+    #                 None,
+    #                 normal_time,
+    #                 "CRT-based RSA decryption",
+    #                 result["crt_result"],
+    #                 None,
+    #                 crt_time,
+    #             )
+    #             if crt_time > 0:
+    #                 st.caption(f"Measured speedup: {normal_time / crt_time:.2f}×")
+    #             st.caption(
+    #                 "."
+    #             )
+    #         except ValueError as exc:
+    #             st.error(str(exc))
 
 
 if __name__ == "__main__":

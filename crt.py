@@ -1,4 +1,5 @@
 import time
+import random
 from collections.abc import Iterable
 
 from cpython import (
@@ -11,7 +12,6 @@ from cpython import (
 
 
 def combine_congruences(a1: int, n1: int, a2: int, n2: int) -> tuple[int, int]:
-    """Combine two congruences, including non-coprime moduli."""
     if n1 <= 0 or n2 <= 0:
         raise ValueError("Moduli must be positive integers.")
 
@@ -52,30 +52,57 @@ def solve_crt(congruences: Iterable[tuple[int, int]]) -> tuple[int, int]:
     return residue, modulus
 
 
-def is_prime(value: int) -> bool:
+def is_prime(value: int, k: int = 40) -> bool:
     if value < 2:
         return False
+    if value in (2, 3):
+        return True
     if value % 2 == 0:
-        return value == 2
-    divisor = 3
-    while divisor * divisor <= value:
-        if value % divisor == 0:
+        return False
+
+    d = value - 1
+    s = 0
+    while d % 2 == 0:
+        d //= 2
+        s += 1
+
+    for _ in range(k):
+        a = random.randint(2, value - 2)
+        x = pow(a, d, value)
+        
+        if x == 1 or x == value - 1:
+            continue
+            
+        for _ in range(s - 1):
+            x = pow(x, 2, value)
+            if x == value - 1:
+                break
+        else:
             return False
-        divisor += 2
+
+    print(f"{value} is prime.")
     return True
+
+def decrypt_normally(ciphertext, private_exponent, modulus) -> int:
+    return pow(ciphertext, private_exponent, modulus)
+
+def decrypt_with_crt(ciphertext, private_exponent,p,q) -> int:
+    residue_p = pow(ciphertext, manual_mod(private_exponent , (p - 1)), p)
+    residue_q = pow(ciphertext, manual_mod(private_exponent , (q - 1)), q)
+    result, _ = combine_congruences(residue_p, p, residue_q, q)
+    return result
 
 
 def rsa_decryption_experiment(
-    p: int, q: int, public_exponent: int, message: int, repetitions: int = 100
-) -> dict[str, int | float]:
-    """Encrypt a message, then time ordinary and CRT-based RSA decryption."""
+    p: int, q: int, public_exponent: int, message: int, repetitions: int = 100) -> dict[str, int | float]:
     if not is_prime(p) or not is_prime(q) or p == q:
         raise ValueError("p and q must be distinct prime numbers.")
     if repetitions <= 0:
         raise ValueError("Repetitions must be positive.")
-
-    modulus = p * q
-    phi = (p - 1) * (q - 1)
+    
+    start = time.perf_counter()
+    modulus = naive_multiply(p, q)
+    phi = naive_multiply((p - 1) , (q - 1))
     if not 1 < public_exponent < phi:
         raise ValueError("The public exponent must be between 1 and phi(n).")
     if extended_gcd_naive(public_exponent, phi)[0] != 1:
@@ -85,30 +112,25 @@ def rsa_decryption_experiment(
 
     private_exponent = mod_inverse_naive(public_exponent, phi)
     ciphertext = pow(message, public_exponent, modulus)
-
-    def decrypt_normally() -> int:
-        return pow(ciphertext, private_exponent, modulus)
-
-    def decrypt_with_crt() -> int:
-        residue_p = pow(ciphertext, private_exponent % (p - 1), p)
-        residue_q = pow(ciphertext, private_exponent % (q - 1), q)
-        result, _ = combine_congruences(residue_p, p, residue_q, q)
-        return result
-
-    normal_result = decrypt_normally()
-    crt_result = decrypt_with_crt()
+    print(f"RSA decryption experiment: p={p}, q={q}, e={public_exponent}, message={message}")
+    normal_result = decrypt_normally(ciphertext,private_exponent,modulus)
+    crt_result = decrypt_with_crt(ciphertext,private_exponent,p,q)
     if normal_result != message or crt_result != message:
         raise ArithmeticError("RSA decryption did not recover the input message.")
 
-    start = time.perf_counter()
-    for _ in range(repetitions):
-        decrypt_normally()
-    normal_seconds = (time.perf_counter() - start) / repetitions
+
+    time_to_incrypt = (time.perf_counter() - start) / repetitions
 
     start = time.perf_counter()
     for _ in range(repetitions):
-        decrypt_with_crt()
-    crt_seconds = (time.perf_counter() - start) / repetitions
+        decrypt_with_crt(ciphertext, private_exponent, p, q)
+    crt_seconds = ((time.perf_counter() - start) / repetitions) + time_to_incrypt
+        
+    start = time.perf_counter()
+    for _ in range(repetitions):
+        decrypt_normally(ciphertext, private_exponent, modulus)
+    normal_seconds = ((time.perf_counter() - start) / repetitions) + time_to_incrypt
+        
 
     return {
         "modulus": modulus,
@@ -139,10 +161,23 @@ def run_experiments() -> None:
         print(f"Inconsistent example: {exc}")
 
     print("\nRSA normal versus CRT decryption")
-    result = rsa_decryption_experiment(1009, 1013, 65537, 12345)
+
+    p_2048 = 13277052251592296463630465408098953821838756077009035847219343704305868323379051149315001423416212637570003177943584170509189094487560828622530869875126383
+
+    q_2048 = 12639269531989147201733526724530731881626059465403263654998508727692235461208298365257438532927812866902939347404040456517853601759767854430231538883622993
+
+
+    result = rsa_decryption_experiment(p_2048, q_2048, 65537, 12345)
+
     for key, value in result.items():
         print(f"{key}: {value}")
 
 
 if __name__ == "__main__":
     run_experiments()
+
+
+
+
+
+#./.venv/bin/streamlit run calculatorUi.py --server.fileWatcherType none

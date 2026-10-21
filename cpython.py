@@ -11,6 +11,7 @@ import random
 import secrets
 import sys
 import time
+import readline
 
 try:
     import gmpy2
@@ -20,11 +21,6 @@ except ImportError:
 
 
 def manual_mod(x: int, m: int) -> int:
-    """
-    Remainder of x mod m, computed by hand with binary long division
-    (shift + subtract). Does NOT use %, //, or divmod. O(bit-length(x)).
-    Matches Python's % sign convention for m > 0.
-    """
     if m == 0:
         raise ZeroDivisionError("modulo by zero")
     m_abs = abs(m)
@@ -65,7 +61,6 @@ def naive_multiply(a: int, b: int) -> int:
 # 1. GCD
 # ===========================================================================
 def gcd_naive(a: int, b: int) -> int:
-    """Hand-written Euclidean algorithm."""
     a, b = abs(a), abs(b)
     while b:
         a, b = b, manual_mod(a, b)
@@ -73,14 +68,10 @@ def gcd_naive(a: int, b: int) -> int:
 
 
 def gcd_prebuilt(a: int, b: int) -> int:
-    """Python standard-library implementation."""
     return math.gcd(a, b)
 
 
 def extended_gcd_naive(a: int, b: int):
-    """
-    Returns (g, x, y) with a*x + b*y = g = gcd(a, b), g >= 0.
-    """
     sign_a = -1 if a < 0 else 1
     sign_b = -1 if b < 0 else 1
     ua, ub = abs(a), abs(b)
@@ -99,10 +90,6 @@ def extended_gcd_naive(a: int, b: int):
 
 
 def extended_gcd_prebuilt(a: int, b: int):
-    """
-    Library implementation via gmpy2.gcdext(a, b) -> (x, y, g) with
-    a*x + b*y = g.
-    """
     if not HAVE_GMPY2:
         raise RuntimeError("gmpy2 is not installed -- run: pip install gmpy2")
     g, x, y = gmpy2.gcdext(a, b)
@@ -110,7 +97,6 @@ def extended_gcd_prebuilt(a: int, b: int):
 
 
 def mod_inverse_naive(a: int, m: int) -> int:
-    """Hand-written: uses our own extended_gcd_naive."""
     if m <= 0:
         raise ValueError("modulus must be positive")
     a_mod = manual_mod(a, m)
@@ -121,26 +107,21 @@ def mod_inverse_naive(a: int, m: int) -> int:
 
 
 def mod_inverse_prebuilt(a: int, m: int) -> int:
-    """Library implementation: Python's built-in pow(a, -1, m)  (Python >= 3.8)."""
     return pow(a, -1, m)
 
 
 def mod_add_naive(a: int, b: int, m: int) -> int:
-    """Hand-written: plain addition, reduced with manual_mod (no % operator)."""
     return manual_mod(a + b, m)
 
 
 def mod_add_prebuilt(a: int, b: int, m: int) -> int:
-    """Library implementation: Python's built-in % operator."""
     return (a + b) % m
 
 def mod_mul_naive(a: int, b: int, m: int) -> int:
-    """Hand-written: shift-and-add multiply, reduced with manual_mod."""
     return manual_mod(naive_multiply(a, b), m)
 
 
 def mod_mul_prebuilt(a: int, b: int, m: int) -> int:
-    """Library implementation: Python's built-in * and % operators."""
     return (a * b) % m
 
 
@@ -164,13 +145,11 @@ def mod_pow_naive(base: int, exp: int, mod: int) -> int:
 
 
 def mod_pow_prebuilt(base: int, exp: int, mod: int) -> int:
-    """Library implementation: Python's built-in three-argument pow(base, exp, mod)."""
     return pow(base, exp, mod)
 
 
 
 def mod_pow_square_and_multiply(base: int, exp: int, mod: int) -> int:
-    """Hand-written square-and-multiply. O(log exp) modular multiplications."""
     if exp < 0:
         raise ValueError("only non-negative exponents supported")
     result = manual_mod(1, mod)
@@ -184,17 +163,11 @@ def mod_pow_square_and_multiply(base: int, exp: int, mod: int) -> int:
     return result
 
 
-#
 def run_both(op_name, naive_fn, prebuilt_fn, args,
              naive_label="NAIVE (manual)", prebuilt_label="PREBUILT (library)"):
-    """
-    Calls naive_fn(*args), then prebuilt_fn(*args), one right after the other.
-    Times each call SEPARATELY and prints both results + timings to the screen.
-    """
     print(f"\n----- {op_name} -----")
     print(f"inputs: {args}")
 
-    # ---- 1) naive, runs first ----
     t0 = time.perf_counter()
     try:
         naive_result = naive_fn(*args)
@@ -204,7 +177,6 @@ def run_both(op_name, naive_fn, prebuilt_fn, args,
         naive_error = e
     t_naive = time.perf_counter() - t0
 
-    # ---- 2) prebuilt, runs right after ----
     t0 = time.perf_counter()
     try:
         prebuilt_result = prebuilt_fn(*args)
@@ -343,7 +315,7 @@ def run_timing_experiment() -> None:
         if NAIVE_EXP_LIMIT is None or exp <= NAIVE_EXP_LIMIT:
             t0 = time.perf_counter()
             r_naive = mod_pow_naive(base, exp, mod)
-            t_naive = time.perf_counter() - t0
+            t_naive = tmod_ime.perf_counter() - t0
         else:
             r_naive, t_naive = None, float("nan")
 
