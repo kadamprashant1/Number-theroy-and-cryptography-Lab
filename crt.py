@@ -1,4 +1,6 @@
 import time
+import re  
+import readline
 from collections.abc import Iterable
 
 from cpython import (
@@ -73,7 +75,6 @@ def _best_average_time(func, repetitions: int | None, rounds: int = 3) -> float:
 def rsa_decryption_experiment(
     p: int, q: int, public_exponent: int, message: int, repetitions: int | None = None
 ) -> dict[str, int | float]:
-    """Encrypt a message, then time ordinary and CRT-based RSA decryption."""
 
     if repetitions is not None and repetitions <= 0:
         raise ValueError("Repetitions must be positive.")
@@ -159,7 +160,7 @@ def menu_solve_crt() -> None:
                 print("  [!] Please enter at least one congruence.")
                 continue
             break
-        parts = entry.split()
+        parts = entry.replace(",", " ").split()
         if len(parts) != 2:
             print("  [!] Expected two integers separated by a space. Try again.")
             continue
