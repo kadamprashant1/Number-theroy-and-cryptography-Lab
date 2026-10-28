@@ -1,5 +1,4 @@
 import time
-import random
 from collections.abc import Iterable
 
 from cpython import (
@@ -52,57 +51,35 @@ def solve_crt(congruences: Iterable[tuple[int, int]]) -> tuple[int, int]:
     return residue, modulus
 
 
-def is_prime(value: int, k: int = 40) -> bool:
-    if value < 2:
-        return False
-    if value in (2, 3):
-        return True
-    if value % 2 == 0:
-        return False
 
-    d = value - 1
-    s = 0
-    while d % 2 == 0:
-        d //= 2
-        s += 1
 
-    for _ in range(k):
-        a = random.randint(2, value - 2)
-        x = pow(a, d, value)
-        
-        if x == 1 or x == value - 1:
-            continue
-            
-        for _ in range(s - 1):
-            x = pow(x, 2, value)
-            if x == value - 1:
-                break
-        else:
-            return False
+def _best_average_time(func, repetitions: int | None, rounds: int = 3) -> float:
+    func() 
+    if repetitions is None:
+        start = time.perf_counter()
+        func()
+        single = max(time.perf_counter() - start, 1e-9)
+        repetitions = max(5, min(50_000, int(0.05 / single)))
 
-    print(f"{value} is prime.")
-    return True
-
-def decrypt_normally(ciphertext, private_exponent, modulus) -> int:
-    return pow(ciphertext, private_exponent, modulus)
-
-def decrypt_with_crt(ciphertext, private_exponent,p,q) -> int:
-    residue_p = pow(ciphertext, manual_mod(private_exponent , (p - 1)), p)
-    residue_q = pow(ciphertext, manual_mod(private_exponent , (q - 1)), q)
-    result, _ = combine_congruences(residue_p, p, residue_q, q)
-    return result
+    best = float("inf")
+    for _ in range(rounds):
+        start = time.perf_counter()
+        for _ in range(repetitions):
+            func()
+        best = min(best, (time.perf_counter() - start) / repetitions)
+    return best
 
 
 def rsa_decryption_experiment(
-    p: int, q: int, public_exponent: int, message: int, repetitions: int = 100) -> dict[str, int | float]:
-    if not is_prime(p) or not is_prime(q) or p == q:
-        raise ValueError("p and q must be distinct prime numbers.")
-    if repetitions <= 0:
+    p: int, q: int, public_exponent: int, message: int, repetitions: int | None = None
+) -> dict[str, int | float]:
+    """Encrypt a message, then time ordinary and CRT-based RSA decryption."""
+
+    if repetitions is not None and repetitions <= 0:
         raise ValueError("Repetitions must be positive.")
-    
-    start = time.perf_counter()
-    modulus = naive_multiply(p, q)
-    phi = naive_multiply((p - 1) , (q - 1))
+
+    modulus = p * q
+    phi = (p - 1) * (q - 1)
     if not 1 < public_exponent < phi:
         raise ValueError("The public exponent must be between 1 and phi(n).")
     if extended_gcd_naive(public_exponent, phi)[0] != 1:
@@ -112,25 +89,28 @@ def rsa_decryption_experiment(
 
     private_exponent = mod_inverse_naive(public_exponent, phi)
     ciphertext = pow(message, public_exponent, modulus)
-    print(f"RSA decryption experiment: p={p}, q={q}, e={public_exponent}, message={message}")
-    normal_result = decrypt_normally(ciphertext,private_exponent,modulus)
-    crt_result = decrypt_with_crt(ciphertext,private_exponent,p,q)
+
+    # CRT key constants: computed once at key setup, NOT inside the timed code.
+    d_p = private_exponent % (p - 1)
+    d_q = private_exponent % (q - 1)
+    q_inv_mod_p = pow(q, -1, p)
+
+    def decrypt_normally() -> int:
+        return pow(ciphertext, private_exponent, modulus)
+
+    def decrypt_with_crt() -> int:
+        m_p = pow(ciphertext, d_p, p)
+        m_q = pow(ciphertext, d_q, q)
+        h = (q_inv_mod_p * (m_p - m_q)) % p
+        return m_q + h * q
+
+    normal_result = decrypt_normally()
+    crt_result = decrypt_with_crt()
     if normal_result != message or crt_result != message:
         raise ArithmeticError("RSA decryption did not recover the input message.")
 
-
-    time_to_incrypt = (time.perf_counter() - start) / repetitions
-
-    start = time.perf_counter()
-    for _ in range(repetitions):
-        decrypt_with_crt(ciphertext, private_exponent, p, q)
-    crt_seconds = ((time.perf_counter() - start) / repetitions) + time_to_incrypt
-        
-    start = time.perf_counter()
-    for _ in range(repetitions):
-        decrypt_normally(ciphertext, private_exponent, modulus)
-    normal_seconds = ((time.perf_counter() - start) / repetitions) + time_to_incrypt
-        
+    normal_seconds = _best_average_time(decrypt_normally, repetitions)
+    crt_seconds = _best_average_time(decrypt_with_crt, repetitions)
 
     return {
         "modulus": modulus,
@@ -161,23 +141,96 @@ def run_experiments() -> None:
         print(f"Inconsistent example: {exc}")
 
     print("\nRSA normal versus CRT decryption")
-
-    p_2048 = 13277052251592296463630465408098953821838756077009035847219343704305868323379051149315001423416212637570003177943584170509189094487560828622530869875126383
-
-    q_2048 = 12639269531989147201733526724530731881626059465403263654998508727692235461208298365257438532927812866902939347404040456517853601759767854430231538883622993
-
-
-    result = rsa_decryption_experiment(p_2048, q_2048, 65537, 12345)
-
+    result = rsa_decryption_experiment(1009, 1013, 65537, 12345)
     for key, value in result.items():
         print(f"{key}: {value}")
 
 
+def menu_solve_crt() -> None:
+    print("\n--- Solve System of Congruences (CRT) ---")
+    congruences: list[tuple[int, int]] = []
+    while True:
+        entry = input(
+            f"  Enter congruence #{len(congruences) + 1} as 'residue modulus'"
+            " (or press Enter to solve): "
+        ).strip()
+        if not entry:
+            if not congruences:
+                print("  [!] Please enter at least one congruence.")
+                continue
+            break
+        parts = entry.split()
+        if len(parts) != 2:
+            print("  [!] Expected two integers separated by a space. Try again.")
+            continue
+        try:
+            a, n = int(parts[0]), int(parts[1])
+        except ValueError:
+            print("  [!] Both values must be integers. Try again.")
+            continue
+        congruences.append((a, n))
+
+    try:
+        residue, modulus = solve_crt(congruences)
+        print(f"\n  Result: x ≡ {residue} (mod {modulus})")
+    except (ValueError, ArithmeticError) as exc:
+        print(f"\n  [Error] {exc}")
+
+
+def menu_rsa_experiment() -> None:
+    print("\n--- RSA Normal vs. CRT Decryption Experiment ---")
+    try:
+        p              = int(input("  Prime p              : "))
+        q              = int(input("  Prime q              : "))
+        public_exponent = int(input("  Public exponent (e)  : "))
+        message        = int(input("  Message (0 ≤ m < p*q): "))
+        rep_str        = input("  Repetitions [auto]   : ").strip()
+    except ValueError:
+        print("  [!] All inputs must be integers.")
+        return
+
+    try:
+        result = rsa_decryption_experiment(p, q, public_exponent, message, None)
+    except (ValueError, ArithmeticError) as exc:
+        print(f"\n  [Error] {exc}")
+        return
+
+    print()
+    width = max(len(k) for k in result)
+    for key, value in result.items():
+        if isinstance(value, float):
+            print(f"  {key:<{width}} : {value:.6e} s")
+        else:
+            print(f"  {key:<{width}} : {value}")
+
+    speedup = result["normal_seconds"] / result["crt_seconds"]
+    print(f"\n  CRT speedup: {speedup:.2f}×")
+
+
+MENU_OPTIONS = {
+    "1": ("Solve a system of congruences (CRT)", menu_solve_crt),
+    "2": ("Run RSA decryption timing experiment",  menu_rsa_experiment),
+    "3": ("Run all built-in examples",             run_experiments),
+}
+
 if __name__ == "__main__":
-    run_experiments()
+    print("=" * 50)
+    print("  Chinese Remainder Theorem (CRT) Tool")
+    print("=" * 50)
 
+    while True:
+        print("\nMenu:")
+        for key, (description, _) in MENU_OPTIONS.items():
+            print(f"  [{key}] {description}")
+        print("  [0] Exit")
 
+        choice = input("\nEnter choice: ").strip()
 
-
-
-#./.venv/bin/streamlit run calculatorUi.py --server.fileWatcherType none
+        if choice == "0":
+            print("Goodbye!")
+            break
+        elif choice in MENU_OPTIONS:
+            _, action = MENU_OPTIONS[choice]
+            action()
+        else:
+            print(f"  [!] Invalid choice '{choice}'. Please enter 0–{len(MENU_OPTIONS)}.")
