@@ -2,6 +2,11 @@ import time
 import streamlit as st
 
 from crt import rsa_decryption_experiment, solve_crt
+from primality_test import (
+    fermat_primality_test,
+    miller_rabin_primality_test,
+    trivial_primality_test,
+)
 from cpython import (
     NAIVE_EXP_LIMIT,
     extended_gcd_naive,
@@ -162,8 +167,13 @@ def parse_congruence_lines(raw_value: str) -> list[tuple[int, int]]:
 def main():
     st.set_page_config(page_title="Number Theory Calculator", layout="wide")
     st.title("Number Theory and Cryptography Lab")
-    arithmetic_tab, crt_tab, rsa_tab = st.tabs(
-        ["Modular Arithmetic", "Generalized CRT", "RSA CRT Comparison"]
+    arithmetic_tab, crt_tab, rsa_tab, primality_tab = st.tabs(
+        [
+            "Modular Arithmetic",
+            "Generalized CRT",
+            "RSA CRT Comparison",
+            "Primality Test",
+        ]
     )
 
     with arithmetic_tab:
@@ -234,10 +244,9 @@ def main():
             try:
                 congruences = parse_congruence_lines(raw_congruences)
                 residue, modulus = solve_crt(congruences)
-                st.success(f"x ≡ {residue} (mod {modulus})")
+                st.text(f"x ≡ {residue} (mod {modulus})")
                 st.caption(
-                    f"Smallest non-negative solution: {residue}. "
-                    f"All solutions differ by a multiple of {modulus}."
+                    f""
                 )
             except ValueError as exc:
                 st.error(str(exc))
@@ -283,6 +292,86 @@ def main():
                 st.caption(
                     "."
                 )
+            except ValueError as exc:
+                st.error(str(exc))
+
+    with primality_tab:
+        st.write("Test whether a given integer $n$ is prime.")
+        method = st.selectbox(
+            "Choose test method",
+            [
+                "All Methods (Comparison)",
+                "Trial Division",
+                "Fermat Primality Test",
+                "Miller-Rabin Primality Test",
+            ],
+        )
+        with st.form("primality_form"):
+            n_value = st.text_input("Integer n", value="1000000007")
+            k_value = st.text_input("Iterations / Confidence parameter k", value="5")
+            primality_submitted = st.form_submit_button("Test Primality")
+
+        if primality_submitted:
+            try:
+                n = parse_int(n_value, "n")
+                k = parse_int(k_value, "k")
+                if k <= 0:
+                    raise ValueError("Iterations k must be a positive integer.")
+
+                if method == "Trial Division":
+                    res, err, elapsed = safe_call(trivial_primality_test, n)
+                    st.subheader("Trial Division")
+                    if err is None:
+                        st.code("Prime" if res else "Composite")
+                        st.caption(f"Time: {elapsed:.6f}s")
+                    else:
+                        st.error(str(err))
+
+                elif method == "Fermat Primality Test":
+                    res, err, elapsed = safe_call(fermat_primality_test, n, k)
+                    st.subheader("Fermat Primality Test")
+                    if err is None:
+                        st.code("Probably Prime" if res else "Composite")
+                        st.caption(f"Time: {elapsed:.6f}s")
+                    else:
+                        st.error(str(err))
+
+                elif method == "Miller-Rabin Primality Test":
+                    res, err, elapsed = safe_call(miller_rabin_primality_test, n, k)
+                    st.subheader("Miller-Rabin Primality Test")
+                    if err is None:
+                        st.code("Probably Prime" if res else "Composite")
+                        st.caption(f"Time: {elapsed:.6f}s")
+                    else:
+                        st.error(str(err))
+
+                else:
+                    t_res, t_err, t_time = safe_call(trivial_primality_test, n)
+                    f_res, f_err, f_time = safe_call(fermat_primality_test, n, k)
+                    mr_res, mr_err, mr_time = safe_call(miller_rabin_primality_test, n, k)
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.subheader("Trial Division")
+                        if t_err is None:
+                            st.code("Prime" if t_res else "Composite")
+                            st.caption(f"Time: {t_time:.6f}s")
+                        else:
+                            st.error(str(t_err))
+                    with col2:
+                        st.subheader("Fermat Test")
+                        if f_err is None:
+                            st.code("Probably Prime" if f_res else "Composite")
+                            st.caption(f"Time: {f_time:.6f}s")
+                        else:
+                            st.error(str(f_err))
+                    with col3:
+                        st.subheader("Miller-Rabin Test")
+                        if mr_err is None:
+                            st.code("Probably Prime" if mr_res else "Composite")
+                            st.caption(f"Time: {mr_time:.6f}s")
+                        else:
+                            st.error(str(mr_err))
             except ValueError as exc:
                 st.error(str(exc))
 

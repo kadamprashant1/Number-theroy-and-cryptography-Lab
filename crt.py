@@ -1,6 +1,9 @@
 import time
 import re  
-import readline
+try:
+    import readline
+except ImportError:
+    pass
 from collections.abc import Iterable
 
 from cpython import (

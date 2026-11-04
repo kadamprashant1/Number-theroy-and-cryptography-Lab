@@ -11,7 +11,10 @@ import random
 import secrets
 import sys
 import time
-import readline
+try:
+    import readline
+except ImportError:
+    pass
 
 try:
     import gmpy2

@@ -1,235 +1,150 @@
+import random
 import time
-import re  
-import readline
-from collections.abc import Iterable
 
-from cpython import (
-    extended_gcd_naive,
-    manual_mod,
-    mod_inverse_naive,
-    mod_mul_naive,
-    naive_multiply,
-)
+try:
+    import readline
+except ImportError:
+    pass
+
+from cpython import extended_gcd_naive
 
 
-def combine_congruences(a1: int, n1: int, a2: int, n2: int) -> tuple[int, int]:
-    if n1 <= 0 or n2 <= 0:
-        raise ValueError("Moduli must be positive integers.")
-
-    a1 = manual_mod(a1, n1)
-    a2 = manual_mod(a2, n2)
-    gcd, _, _ = extended_gcd_naive(n1, n2)
-    difference = a2 - a1
-    if difference % gcd:
-        raise ValueError(
-            f"No solution: the residues differ by {difference}, which is not "
-            f"divisible by gcd({n1}, {n2}) = {gcd}."
-        )
-
-    reduced_n1 = n1 // gcd
-    reduced_n2 = n2 // gcd
-    inverse = mod_inverse_naive(reduced_n1, reduced_n2)
-    multiplier = mod_mul_naive(difference // gcd, inverse, reduced_n2)
-    modulus = naive_multiply(n1, reduced_n2)
-    residue = manual_mod(a1 + naive_multiply(n1, multiplier), modulus)
-    return residue, modulus
+def trivial_primality_test(p: int) -> bool:
+    if p <= 1:
+        return False
+    if p == 2:
+        return True
+    if p % 2 == 0:
+        return False
+    for i in range(3, int(p**0.5) + 1, 2):
+        if p % i == 0:
+            return False
+    return True
 
 
-def solve_crt(congruences: Iterable[tuple[int, int]]) -> tuple[int, int]:
-    items = iter(congruences)
-    try:
-        residue, modulus = next(items)
-    except StopIteration as exc:
-        raise ValueError("Enter at least one congruence.") from exc
+def fermat_primality_test(p: int, k: int = 5) -> bool:
+    if p <= 1:
+        return False
+    if p in (2, 3):
+        return True
+    if p % 2 == 0:
+        return False
 
-    if modulus <= 0:
-        raise ValueError("Moduli must be positive integers.")
-    residue = manual_mod(residue, modulus)
-
-    for next_residue, next_modulus in items:
-        residue, modulus = combine_congruences(
-            residue, modulus, next_residue, next_modulus
-        )
-    return residue, modulus
+    for _ in range(max(1, k)):
+        a = random.randint(2, p - 2)
+        gcd = extended_gcd_naive(p, a)[0]
+        if gcd != 1 or pow(a, p - 1, p) != 1:
+            return False
+    return True
 
 
+def miller_rabin_primality_test(p: int, k: int = 5) -> bool:
+    if p <= 1:
+        return False
+    if p in (2, 3):
+        return True
+    if p % 2 == 0:
+        return False
 
+    d, s = p - 1, 0
+    while d % 2 == 0:
+        d //= 2
+        s += 1
 
-def _best_average_time(func, repetitions: int | None, rounds: int = 3) -> float:
-    func() 
-    if repetitions is None:
-        start = time.perf_counter()
-        func()
-        single = max(time.perf_counter() - start, 1e-9)
-        repetitions = max(5, min(50_000, int(0.05 / single)))
-
-    best = float("inf")
-    for _ in range(rounds):
-        start = time.perf_counter()
-        for _ in range(repetitions):
-            func()
-        best = min(best, (time.perf_counter() - start) / repetitions)
-    return best
-
-
-def rsa_decryption_experiment(
-    p: int, q: int, public_exponent: int, message: int, repetitions: int | None = None) -> dict[str, int | float]:
-
-    if repetitions is not None and repetitions <= 0:
-        raise ValueError("Repetitions must be positive.")
-
-    modulus = p * q
-    phi = (p - 1) * (q - 1)
-    if not 1 < public_exponent < phi:
-        raise ValueError("The public exponent must be between 1 and phi(n).")
-    if extended_gcd_naive(public_exponent, phi)[0] != 1:
-        raise ValueError("The public exponent must be coprime to phi(n).")
-    if not 0 <= message < modulus:
-        raise ValueError(f"The message must be in the range 0 to {modulus - 1}.")
-
-    private_exponent = mod_inverse_naive(public_exponent, phi)
-    ciphertext = pow(message, public_exponent, modulus)
-
-    d_p = private_exponent % (p - 1)
-    d_q = private_exponent % (q - 1)
-    q_inv_mod_p = pow(q, -1, p)
-
-    def decrypt_normally() -> int:
-        return pow(ciphertext, private_exponent, modulus)
-
-    def decrypt_with_crt() -> int:
-        m_p = pow(ciphertext, d_p, p)
-        m_q = pow(ciphertext, d_q, q)
-        h = (q_inv_mod_p * (m_p - m_q)) % p
-        return m_q + h * q
-
-    normal_result = decrypt_normally()
-    crt_result = decrypt_with_crt()
-    if normal_result != message or crt_result != message:
-        raise ArithmeticError("RSA decryption did not recover the input message.")
-
-    normal_seconds = _best_average_time(decrypt_normally, repetitions)
-    crt_seconds = _best_average_time(decrypt_with_crt, repetitions)
-
-    return {
-        "modulus": modulus,
-        "phi": phi,
-        "private_exponent": private_exponent,
-        "ciphertext": ciphertext,
-        "normal_result": normal_result,
-        "crt_result": crt_result,
-        "normal_seconds": normal_seconds,
-        "crt_seconds": crt_seconds,
-    }
-
-
-def run_experiments() -> None:
-    examples = [
-        [(2, 3), (3, 5)],
-        [(2, 6), (5, 9)],
-        [(2, 3), (3, 5), (2, 7)],
-    ]
-    print("Generalized CRT experiments")
-    for congruences in examples:
-        residue, modulus = solve_crt(congruences)
-        print(f"{congruences} -> x = {residue} (mod {modulus})")
-
-    try:
-        solve_crt([(1, 4), (2, 6)])
-    except ValueError as exc:
-        print(f"Inconsistent example: {exc}")
-
-    print("\nRSA normal versus CRT decryption")
-    result = rsa_decryption_experiment(1009, 1013, 65537, 12345)
-    for key, value in result.items():
-        print(f"{key}: {value}")
-
-
-def menu_solve_crt() -> None:
-    print("\n--- Solve System of Congruences (CRT) ---")
-    congruences: list[tuple[int, int]] = []
-    while True:
-        entry = input(
-            f"  Enter congruence #{len(congruences) + 1} as 'residue modulus'"
-            " (or press Enter to solve): "
-        ).strip()
-        if not entry:
-            if not congruences:
-                print("  [!] Please enter at least one congruence.")
-                continue
-            break
-        parts = entry.replace(",", " ").split()
-        if len(parts) != 2:
-            print("  [!] Expected two integers separated by a space. Try again.")
+    for _ in range(max(1, k)):
+        a = random.randint(2, p - 2)
+        x = pow(a, d, p)
+        if x == 1 or x == p - 1:
             continue
-        try:
-            a, n = int(parts[0]), int(parts[1])
-        except ValueError:
-            print("  [!] Both values must be integers. Try again.")
-            continue
-        congruences.append((a, n))
-
-    try:
-        residue, modulus = solve_crt(congruences)
-        print(f"\n  Result: x ≡ {residue} (mod {modulus})")
-    except (ValueError, ArithmeticError) as exc:
-        print(f"\n  [Error] {exc}")
-
-
-def menu_rsa_experiment() -> None:
-    print("\n--- RSA Normal vs. CRT Decryption Experiment ---")
-    try:
-        p              = int(input("  Prime p              : "))
-        q              = int(input("  Prime q              : "))
-        public_exponent = int(input("  Public exponent (e)  : "))
-        message        = int(input("  Message (0 ≤ m < p*q): "))
-        rep_str        = input("  Repetitions [auto]   : ").strip()
-    except ValueError:
-        print("  [!] All inputs must be integers.")
-        return
-
-    try:
-        result = rsa_decryption_experiment(p, q, public_exponent, message, None)
-    except (ValueError, ArithmeticError) as exc:
-        print(f"\n  [Error] {exc}")
-        return
-
-    print()
-    width = max(len(k) for k in result)
-    for key, value in result.items():
-        if isinstance(value, float):
-            print(f"  {key:<{width}} : {value:.6e} s")
+        for _ in range(s - 1):
+            x = pow(x, 2, p)
+            if x == p - 1:
+                break
         else:
-            print(f"  {key:<{width}} : {value}")
+            return False
+    return True
 
-    speedup = result["normal_seconds"] / result["crt_seconds"]
-    print(f"\n  CRT speedup: {speedup:.2f}×")
+
+def trivial_menu():
+    print("\n--- Trivial Division ---")
+    try:
+        p = int(input("Enter p: "))
+    except ValueError:
+        print("Invalid input.")
+        return
+    res = trivial_primality_test(p)
+    print(f"{p} is {'prime' if res else 'composite'}")
+
+
+def fermat_test_menu():
+    print("\n--- Fermat Test ---")
+    try:
+        p = int(input("Enter p: "))
+        rep = input("Repetitions [5]: ").strip()
+        k = int(rep) if rep else 5
+    except ValueError:
+        print("Invalid input.")
+        return
+    res = fermat_primality_test(p, k)
+    print(f"{p} is {'probably prime' if res else 'composite'}")
+
+
+def Miller_rabin_menu():
+    print("\n--- Miller-Rabin Test ---")
+    try:
+        p = int(input("Enter p: "))
+        rep = input("Repetitions [5]: ").strip()
+        k = int(rep) if rep else 5
+    except ValueError:
+        print("Invalid input.")
+        return
+    res = miller_rabin_primality_test(p, k)
+    print(f"{p} is {'probably prime' if res else 'composite'}")
+
+
+def run_expriment_menu():
+    print("\n--- Primality Test Comparison ---")
+    cases = [101, 257, 1000000007, 1000, 10001, 561, 1105, 1729]
+    print(f"{'n':<12} | {'Trivial':<16} | {'Fermat':<16} | {'Miller-Rabin':<16}")
+    print("-" * 65)
+
+    for n in cases:
+        t0 = time.perf_counter()
+        t_res = trivial_primality_test(n)
+        t_time = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        f_res = fermat_primality_test(n, 5)
+        f_time = time.perf_counter() - t0
+
+        t0 = time.perf_counter()
+        mr_res = miller_rabin_primality_test(n, 5)
+        mr_time = time.perf_counter() - t0
+
+        t_str = f"{'Prime' if t_res else 'Comp'} ({t_time:.1e}s)"
+        f_str = f"{'Prime' if f_res else 'Comp'} ({f_time:.1e}s)"
+        mr_str = f"{'Prime' if mr_res else 'Comp'} ({mr_time:.1e}s)"
+        print(f"{n:<12} | {t_str:<16} | {f_str:<16} | {mr_str:<16}")
 
 
 MENU_OPTIONS = {
-    "1": ("Solve a system of congruences (CRT)", menu_solve_crt),
-    "2": ("Run RSA decryption timing experiment",  menu_rsa_experiment),
-    "3": ("Run all built-in examples",             run_experiments),
+    "1": ("Trivial Division", trivial_menu),
+    "2": ("Fermat Primality Test", fermat_test_menu),
+    "3": ("Miller-Rabin Primality Test", Miller_rabin_menu),
+    "4": ("Run Comparison Experiment", run_expriment_menu),
 }
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("  Chinese Remainder Theorem (CRT) Tool")
-    print("=" * 50)
-
     while True:
-        print("\nMenu:")
-        for key, (description, _) in MENU_OPTIONS.items():
-            print(f"  [{key}] {description}")
+        print("\nPrimality Test Tool")
+        for k, (desc, _) in MENU_OPTIONS.items():
+            print(f"  [{k}] {desc}")
         print("  [0] Exit")
 
-        choice = input("\nEnter choice: ").strip()
-
+        choice = input("Choice: ").strip()
         if choice == "0":
-            print("Goodbye!")
             break
         elif choice in MENU_OPTIONS:
-            _, action = MENU_OPTIONS[choice]
-            action()
+            MENU_OPTIONS[choice][1]()
         else:
-            print(f"  [!] Invalid choice '{choice}'. Please enter 0–{len(MENU_OPTIONS)}.")
+            print("Invalid choice.")
