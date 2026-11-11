@@ -3,6 +3,7 @@ import streamlit as st
 
 from crt import rsa_decryption_experiment, solve_crt
 from primality_test import (
+    calculate_error_probability,
     fermat_primality_test,
     miller_rabin_primality_test,
     trivial_primality_test,
@@ -48,6 +49,13 @@ def safe_call(func, *args):
         error = exc
     elapsed = time.perf_counter() - start
     return result, error, elapsed
+
+
+def show_primality_stats(test: str, res: bool, n: int, k: int, stats: dict):
+    st.caption(f"Runs: {stats['runs']} | Passed as prime: {stats['prime']}")
+    if res and n > 3:
+        probability = 100 - calculate_error_probability(test, k)
+        st.caption(f"Repetitions: {k} | Probability of being prime: {probability:.10g}%")
 
 
 def show_side_by_side(label_a: str, result_a, error_a, elapsed_a, label_b: str, result_b, error_b, elapsed_b):
@@ -328,27 +336,33 @@ def main():
                         st.error(str(err))
 
                 elif method == "Fermat Primality Test":
-                    res, err, elapsed = safe_call(fermat_primality_test, n, k)
+                    f_stats = {"runs": 0, "prime": 0}
+                    res, err, elapsed = safe_call(fermat_primality_test, n, k, f_stats)
                     st.subheader("Fermat Primality Test")
                     if err is None:
                         st.code("Probably Prime" if res else "Composite")
                         st.caption(f"Time: {elapsed:.6f}s")
+                        show_primality_stats("fermat", res, n, k, f_stats)
                     else:
                         st.error(str(err))
 
                 elif method == "Miller-Rabin Primality Test":
-                    res, err, elapsed = safe_call(miller_rabin_primality_test, n, k)
+                    mr_stats = {"runs": 0, "prime": 0}
+                    res, err, elapsed = safe_call(miller_rabin_primality_test, n, k, mr_stats)
                     st.subheader("Miller-Rabin Primality Test")
                     if err is None:
                         st.code("Probably Prime" if res else "Composite")
                         st.caption(f"Time: {elapsed:.6f}s")
+                        show_primality_stats("miller_rabin", res, n, k, mr_stats)
                     else:
                         st.error(str(err))
 
                 else:
+                    f_stats = {"runs": 0, "prime": 0}
+                    mr_stats = {"runs": 0, "prime": 0}
                     t_res, t_err, t_time = safe_call(trivial_primality_test, n)
-                    f_res, f_err, f_time = safe_call(fermat_primality_test, n, k)
-                    mr_res, mr_err, mr_time = safe_call(miller_rabin_primality_test, n, k)
+                    f_res, f_err, f_time = safe_call(fermat_primality_test, n, k, f_stats)
+                    mr_res, mr_err, mr_time = safe_call(miller_rabin_primality_test, n, k, mr_stats)
 
                     col1, col2, col3 = st.columns(3)
                     with col1:
@@ -363,6 +377,7 @@ def main():
                         if f_err is None:
                             st.code("Probably Prime" if f_res else "Composite")
                             st.caption(f"Time: {f_time:.6f}s")
+                            show_primality_stats("fermat", f_res, n, k, f_stats)
                         else:
                             st.error(str(f_err))
                     with col3:
@@ -370,6 +385,7 @@ def main():
                         if mr_err is None:
                             st.code("Probably Prime" if mr_res else "Composite")
                             st.caption(f"Time: {mr_time:.6f}s")
+                            show_primality_stats("miller_rabin", mr_res, n, k, mr_stats)
                         else:
                             st.error(str(mr_err))
             except ValueError as exc:

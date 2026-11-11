@@ -94,7 +94,7 @@ def rsa_decryption_experiment(
     private_exponent = mod_inverse_naive(public_exponent, phi)
     ciphertext = pow(message, public_exponent, modulus)
 
-    # CRT key constants: computed once at key setup, NOT inside the timed code.
+   
     d_p = private_exponent % (p - 1)
     d_q = private_exponent % (q - 1)
     q_inv_mod_p = pow(q, -1, p)
@@ -142,12 +142,21 @@ def run_experiments() -> None:
     try:
         solve_crt([(1, 4), (2, 6)])
     except ValueError as exc:
+        print("[(1,4),(2,6)]")
         print(f"Inconsistent example: {exc}")
 
     print("\nRSA normal versus CRT decryption")
     result = rsa_decryption_experiment(1009, 1013, 65537, 12345)
+    print("p: 1008, q: 1013, e: 65537, message: 12345")
     for key, value in result.items():
         print(f"{key}: {value}")
+        if(key is "normal_seconds"):
+            value_ = value
+        if(key is "crt_seconds"):
+            value_2 = value
+    speedup = value_ / value_2
+    print(f"CRT speedup: {speedup:.2f}×")
+
 
 
 def menu_solve_crt() -> None:
